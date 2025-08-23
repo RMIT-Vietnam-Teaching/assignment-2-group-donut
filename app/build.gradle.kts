@@ -1,9 +1,11 @@
 plugins {
-    id("com.android.application")
-    id("org.jetbrains.kotlin.android")
-    id("kotlin-kapt")
-    id("dagger.hilt.android.plugin")
-    id("kotlin-parcelize")
+    alias(libs.plugins.android.application)
+    alias(libs.plugins.kotlin.android)
+    id("org.jetbrains.kotlin.plugin.compose")
+    id("kotlin-kapt")                       // Consider managing this via catalog too
+    id("dagger.hilt.android.plugin")        // Consider managing this via catalog too
+    id("kotlin-parcelize")                  // Consider managing this via catalog too
+    id("com.google.gms.google-services")    // Consider managing this via catalog too
 }
 
 android {
@@ -38,7 +40,7 @@ android {
         viewBinding = true
     }
     composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.3"
+        kotlinCompilerExtensionVersion = "2.0"
     }
 }
 
@@ -47,6 +49,26 @@ dependencies {
     implementation("androidx.core:core-ktx:1.12.0")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")
     implementation("androidx.activity:activity-compose:1.8.2")
+
+    implementation(platform("com.google.firebase:firebase-bom:33.1.2")) // Đảm bảo bạn có BOM
+    implementation("com.google.firebase:firebase-appcheck-playintegrity")
+    implementation("androidx.hilt:hilt-navigation-compose:1.2.0")
+
+    // Accompanist SwipeRefresh (Lưu ý: Thư viện này đang dần được thay thế bởi thư viện chính thức,
+    // nhưng vẫn dùng tốt cho project hiện tại)
+    implementation("com.google.accompanist:accompanist-swiperefresh:0.27.0")
+    // Firebase Authentication
+    implementation("com.google.firebase:firebase-auth")
+    implementation("com.google.firebase:firebase-firestore-ktx")
+
+    // Firebase Analytics (optional)
+    implementation("com.google.firebase:firebase-analytics")
+
+    // Play Services Auth
+    implementation("com.google.android.gms:play-services-auth:20.7.0")
+
+    // Phone number formatting
+    implementation("com.googlecode.libphonenumber:libphonenumber:8.13.26")
 
     // Compose BOM
     implementation(platform("androidx.compose:compose-bom:2023.10.01"))

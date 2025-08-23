@@ -5,17 +5,17 @@ import com.donut.assignment2.data.local.entities.UserEntity
 
 @Dao
 interface UserDao {
-    @Query("SELECT * FROM users WHERE id = :id")
-    suspend fun getUserById(id: String): UserEntity?
-
-    @Query("SELECT * FROM users WHERE username = :username")
-    suspend fun getUserByUsername(username: String): UserEntity?
-
-    @Query("SELECT * FROM users WHERE username = :username AND password = :password")
-    suspend fun authenticateUser(username: String, password: String): UserEntity?
+    @Query("SELECT * FROM users WHERE phoneNumber = :phoneNumber")
+    suspend fun getUserByPhone(phoneNumber: String): UserEntity?
 
     @Query("SELECT * FROM users WHERE role = :role")
     suspend fun getUsersByRole(role: String): List<UserEntity>
+
+    @Query("SELECT * FROM users WHERE supervisorPhone = :supervisorPhone AND role = 'INSPECTOR'")
+    suspend fun getInspectorsBySupervisor(supervisorPhone: String): List<UserEntity>
+
+    @Query("SELECT COUNT(*) FROM users WHERE supervisorPhone = :supervisorPhone AND role = 'INSPECTOR'")
+    suspend fun countInspectorsBySupervisor(supervisorPhone: String): Int
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertUser(user: UserEntity)
@@ -23,6 +23,9 @@ interface UserDao {
     @Update
     suspend fun updateUser(user: UserEntity)
 
-    @Delete
-    suspend fun deleteUser(user: UserEntity)
+    @Query("DELETE FROM users WHERE phoneNumber = :phoneNumber")
+    suspend fun deleteByPhone(phoneNumber: String)
+
+    @Query("DELETE FROM users")
+    suspend fun deleteAllUsers()
 }

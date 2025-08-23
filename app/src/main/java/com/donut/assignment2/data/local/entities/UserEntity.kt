@@ -1,18 +1,22 @@
 package com.donut.assignment2.data.local.entities
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
-import java.time.LocalDateTime
 
-@Entity(tableName = "users")
+@Entity(
+    tableName = "users",
+    indices = [
+        Index(value = ["supervisorPhone"]),
+        Index(value = ["role"])
+    ]
+)
 data class UserEntity(
     @PrimaryKey
-    val id: String,
-    val username: String,
-    val email: String,
-    val fullName: String,
-    val role: String, // UserRole as String
-    val isActive: Boolean,
-    val createdAt: LocalDateTime,
-    val password: String // Simple password storage for demo
+    val phoneNumber: String,             // Primary Key
+    val fullName: String,                // Full name
+    val email: String?,                  // Email (nullable)
+    val role: String,                    // UserRole as String
+    val supervisorPhone: String? = null, // Supervisor's phone number
+    val profileImageUrl: String? = null  // Avatar URL (nullable)
 )
