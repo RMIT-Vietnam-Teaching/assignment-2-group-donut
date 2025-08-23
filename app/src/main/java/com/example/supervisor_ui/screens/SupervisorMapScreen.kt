@@ -13,15 +13,12 @@ import com.example.supervisor_ui.components.BottomNavigation
 fun SupervisorMapScreen(navController: NavHostController) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
-    var activeScreen by remember { mutableStateOf("map") }
 
     Scaffold(
         bottomBar = {
             BottomNavigation(
                 navController = navController,
-                currentRoute = currentRoute,
-                activeScreen = activeScreen,
-                onScreenChange = { activeScreen = it }
+                currentRoute = currentRoute
             )
         }
     ) { paddingValues ->

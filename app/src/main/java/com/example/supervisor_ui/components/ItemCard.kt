@@ -149,7 +149,6 @@ private fun StatusBadge(status: InspectionStatus) {
             "Needs Attention"
         )
     }
-
     Surface(
         color = backgroundColor,
         shape = MaterialTheme.shapes.small,

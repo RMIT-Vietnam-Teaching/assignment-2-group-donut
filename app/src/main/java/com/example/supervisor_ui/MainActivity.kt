@@ -8,6 +8,7 @@ import androidx.compose.runtime.*
 import com.example.supervisor_ui.navigation.SupervisorApp
 import com.example.supervisor_ui.ui.theme.Supervisor_uiTheme
 
+
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

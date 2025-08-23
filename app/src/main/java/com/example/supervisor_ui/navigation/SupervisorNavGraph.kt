@@ -19,7 +19,7 @@ fun SupervisorNavGraph(
 ) {
     NavHost(
         navController = navController,
-        startDestination = "SupervisorHistoryScreen",
+        startDestination = "SupervisorPendingScreen",
         modifier = modifier
     ) {
         composable("SupervisorHistoryScreen") {
