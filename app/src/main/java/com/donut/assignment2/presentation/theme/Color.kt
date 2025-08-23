@@ -1,4 +1,4 @@
-package com.donut.assignment2.ui.theme
+package com.donut.assignment2.presentation.theme
 
 import androidx.compose.ui.graphics.Color
 
