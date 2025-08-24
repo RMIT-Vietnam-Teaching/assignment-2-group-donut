@@ -42,7 +42,7 @@ fun OTPVerificationScreen(
     // Handle verification success
     LaunchedEffect(uiState.isVerificationSuccess, uiState.user) {
         if (uiState.isVerificationSuccess && uiState.user != null) {
-            Log.d("OTPVerificationScreen", "Verification successful for user: ${uiState.user!!.id}")
+            Log.d("OTPVerificationScreen", "Verification successful for user: ${uiState.user!!.phoneNumber}")
             onVerificationSuccess(uiState.user!!)
         }
     }

@@ -119,7 +119,7 @@ class FirebaseAuthViewModel @Inject constructor(
             try {
                 verifyOTPUseCase(verificationId, otp)
                     .onSuccess { user ->
-                        Log.d(TAG, "OTP verification successful for user: ${user.id}")
+                        Log.d(TAG, "OTP verification successful for user: ${user.phoneNumber}")
                         _uiState.value = _uiState.value.copy(
                             isLoading = false,
                             user = user,

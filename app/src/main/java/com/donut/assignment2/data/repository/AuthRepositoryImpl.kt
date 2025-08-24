@@ -16,12 +16,18 @@ import kotlinx.coroutines.tasks.await
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
+import android.content.Context
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
+import com.google.firebase.firestore.Source
+import dagger.hilt.android.qualifiers.ApplicationContext
 
 @Singleton
 class AuthRepositoryImpl @Inject constructor(
     private val firebaseAuth: FirebaseAuth,
     private val firestore: FirebaseFirestore,
-    private val userRepository: UserRepository
+    private val userRepository: UserRepository,
+    @ApplicationContext private val context: Context
 ) : AuthRepository {
 
     companion object {
@@ -111,8 +117,8 @@ class AuthRepositoryImpl @Inject constructor(
                 try {
                     // 🔥 Use phone number as document ID in Firestore
                     val userDoc = firestore.collection("users")
-                        .document(phoneNumber)  // Document ID = phone number
-                        .get()
+                        .document(phoneNumber)
+                        .get(Source.SERVER)
                         .await()
 
                     if (!userDoc.exists()) {
@@ -138,17 +144,32 @@ class AuthRepositoryImpl @Inject constructor(
 
                     Result.success(user)
 
-                } catch (firestoreException: Exception) {
-                    Log.e(TAG, "Firestore error during user retrieval", firestoreException)
+                } catch (e: Exception) {
+                    Log.e(TAG, "Exception during OTP verification", e)
 
                     val errorMessage = when {
-                        firestoreException.message?.contains("permission-denied", ignoreCase = true) == true ->
-                            "Không có quyền truy cập dữ liệu người dùng"
-                        firestoreException.message?.contains("unavailable", ignoreCase = true) == true ->
-                            "Dịch vụ tạm thời không khả dụng. Vui lòng thử lại"
-                        firestoreException.message?.contains("network", ignoreCase = true) == true ->
-                            "Lỗi kết nối mạng. Kiểm tra internet và thử lại"
-                        else -> "Không thể tải thông tin người dùng: ${firestoreException.message}"
+                        // Network/offline errors
+                        e.message?.contains("offline", ignoreCase = true) == true ||
+                                e.message?.contains("network", ignoreCase = true) == true -> {
+                            "Không có kết nối mạng. Vui lòng kiểm tra internet và thử lại."
+                        }
+
+                        // Firestore unavailable
+                        e.message?.contains("unavailable", ignoreCase = true) == true -> {
+                            "Dịch vụ tạm thời không khả dụng. Vui lòng thử lại sau."
+                        }
+
+                        // Document not found
+                        e.message?.contains("document", ignoreCase = true) == true -> {
+                            "Số điện thoại chưa được đăng ký trong hệ thống"
+                        }
+
+                        // Permission denied
+                        e.message?.contains("permission", ignoreCase = true) == true -> {
+                            "Không có quyền truy cập. Liên hệ admin."
+                        }
+
+                        else -> "Xác thực thất bại: ${e.message}"
                     }
 
                     Result.failure(Exception(errorMessage))
@@ -389,5 +410,12 @@ class AuthRepositoryImpl @Inject constructor(
             supervisorPhone = data["supervisorPhone"] as? String,
             profileImageUrl = data["profileImageUrl"] as? String
         )
+    }
+    private fun isNetworkAvailable(): Boolean {
+        val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        val network = connectivityManager.activeNetwork ?: return false
+        val capabilities = connectivityManager.getNetworkCapabilities(network) ?: return false
+        return capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ||
+                capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)
     }
 }

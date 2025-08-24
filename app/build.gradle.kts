@@ -80,6 +80,8 @@ dependencies {
     // Navigation
     implementation("androidx.navigation:navigation-compose:2.7.5")
 
+    implementation("androidx.compose.material:material-icons-extended:1.6.1")
+
     // Hilt - Dependency Injection
     implementation("com.google.dagger:hilt-android:2.48.1")
     kapt("com.google.dagger:hilt-android-compiler:2.48.1")

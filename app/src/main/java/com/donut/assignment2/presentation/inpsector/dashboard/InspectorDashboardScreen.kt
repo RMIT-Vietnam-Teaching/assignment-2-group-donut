@@ -110,7 +110,7 @@ fun DashboardContent(dashboard: InspectorDashboard, navController: NavController
             Button(
                 modifier = Modifier.fillMaxWidth().height(50.dp),
                 onClick = {
-                    navController.navigate("create_report/${dashboard.user.id}")
+                    navController.navigate("create_report/${dashboard.user.phoneNumber}")
                 },
                 colors = ButtonDefaults.buttonColors(containerColor = SafetyYellow),
                 shape = RoundedCornerShape(10.dp)

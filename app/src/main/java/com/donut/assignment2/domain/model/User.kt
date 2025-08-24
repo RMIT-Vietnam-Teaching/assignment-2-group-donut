@@ -13,6 +13,5 @@ data class User(
 
 enum class UserRole {
     INSPECTOR,      // Người kiểm tra
-    SUPERVISOR,     // Người giám sát
-    ADMIN          // Admin hệ thống
+    SUPERVISOR     // Người giám sát
 }

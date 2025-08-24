@@ -64,11 +64,11 @@ fun AppNavigation() {
             OTPVerificationScreen(
                 verificationId = verificationId,
                 onVerificationSuccess = { user ->
-                    Log.d("AppNavigation", "Verification successful for user: ${user.id} with role: ${user.role}")
+                    Log.d("AppNavigation", "Verification successful for user: ${user.phoneNumber} with role: ${user.role}")
 
                     val route = when (user.role) {
-                        UserRole.INSPECTOR -> "inspector_dashboard/${user.id}"
-                        UserRole.SUPERVISOR -> "supervisor_dashboard/${user.id}"
+                        UserRole.INSPECTOR -> "inspector_dashboard/${user.phoneNumber}"
+                        UserRole.SUPERVISOR -> "supervisor_dashboard/${user.phoneNumber}"
                     }
 
                     Log.d("AppNavigation", "Navigating to: $route")
