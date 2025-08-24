@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "559206395866",
+    "project_id": "field-inspection-donut-d2b14",
+    "storage_bucket": "field-inspection-donut-d2b14.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:559206395866:android:a1f5f08d74951b20025ae3",
+        "android_client_info": {
+          "package_name": "com.donut.assignment2"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB7H3sL1UFXMysbIm15NzTPjgCV4xS1eYc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
