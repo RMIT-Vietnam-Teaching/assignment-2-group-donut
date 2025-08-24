@@ -15,13 +15,13 @@ class ReportMapper @Inject constructor() {
             title = report.title,
             description = report.description,
             location = report.location,
-            inspectorPhone = report.inspectorPhone,  // 🔥 Changed from inspectorId
+            inspectorPhone = report.inspectorPhone,
             status = report.status.name,
             createdAt = report.createdAt,
             updatedAt = report.updatedAt,
             submittedAt = report.submittedAt,
             reviewedAt = report.reviewedAt,
-            supervisorPhone = report.supervisorPhone,  // 🔥 Changed from supervisorId
+            supervisorPhone = report.supervisorPhone,
             supervisorNotes = report.supervisorNotes
         )
     }
@@ -32,13 +32,13 @@ class ReportMapper @Inject constructor() {
             title = entity.title,
             description = entity.description,
             location = entity.location,
-            inspectorPhone = entity.inspectorPhone,  // 🔥 Changed from inspectorId
+            inspectorPhone = entity.inspectorPhone,
             status = ReportStatus.valueOf(entity.status),
             createdAt = entity.createdAt,
             updatedAt = entity.updatedAt,
             submittedAt = entity.submittedAt,
             reviewedAt = entity.reviewedAt,
-            supervisorPhone = entity.supervisorPhone,  // 🔥 Changed from supervisorId
+            supervisorPhone = entity.supervisorPhone,
             supervisorNotes = entity.supervisorNotes
         )
     }

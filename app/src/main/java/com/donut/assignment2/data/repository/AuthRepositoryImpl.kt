@@ -7,8 +7,12 @@ import com.donut.assignment2.domain.model.UserRole
 import com.donut.assignment2.domain.repository.AuthRepository
 import com.donut.assignment2.domain.repository.UserRepository
 import com.google.firebase.FirebaseException
+import com.google.firebase.FirebaseNetworkException
+import com.google.firebase.FirebaseTooManyRequestsException
 import com.google.firebase.auth.*
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.Source
+import com.google.firebase.firestore.SetOptions
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -16,193 +20,238 @@ import kotlinx.coroutines.tasks.await
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
-import android.content.Context
-import android.net.ConnectivityManager
-import android.net.NetworkCapabilities
-import com.google.firebase.firestore.Source
-import dagger.hilt.android.qualifiers.ApplicationContext
 
 @Singleton
 class AuthRepositoryImpl @Inject constructor(
     private val firebaseAuth: FirebaseAuth,
     private val firestore: FirebaseFirestore,
-    private val userRepository: UserRepository,
-    @ApplicationContext private val context: Context
+    private val userRepository: UserRepository
 ) : AuthRepository {
 
     companion object {
         private const val TAG = "AuthRepositoryImpl"
+        private const val USERS_COLLECTION = "users"
     }
 
-    override suspend fun sendOTP(
-        phoneNumber: String,
-        activity: Activity
-    ): Flow<OTPResult> = callbackFlow {
+    override suspend fun sendOTP(phoneNumber: String, activity: Activity): Flow<OTPResult> = callbackFlow {
         Log.d(TAG, "Sending OTP to: $phoneNumber")
 
         val callbacks = object : PhoneAuthProvider.OnVerificationStateChangedCallbacks() {
             override fun onVerificationCompleted(credential: PhoneAuthCredential) {
                 Log.d(TAG, "Verification completed automatically")
-                trySend(OTPResult.AutoVerified)
-                close()
+                firebaseAuth.signInWithCredential(credential)
+                    .addOnCompleteListener { task ->
+                        if (task.isSuccessful) {
+                            trySend(OTPResult.AutoVerified)
+                        } else {
+                            trySend(OTPResult.Error(task.exception ?: Exception("Auto verification failed")))
+                        }
+                        close()
+                    }
             }
 
             override fun onVerificationFailed(e: FirebaseException) {
-                Log.e(TAG, "Verification failed", e)
+                Log.e(TAG, "Verification failed: ${e.message}", e)
+
                 val errorMessage = when (e) {
-                    is FirebaseAuthInvalidCredentialsException -> {
-                        if (e.message?.contains("blocked", ignoreCase = true) == true) {
-                            "Số điện thoại này chưa được đăng ký trong hệ thống"
-                        } else {
-                            "Số điện thoại không hợp lệ"
-                        }
-                    }
-                    is FirebaseAuthException -> {
-                        when (e.errorCode) {
-                            "ERROR_TOO_MANY_REQUESTS" -> "Quá nhiều yêu cầu. Vui lòng thử lại sau"
-                            "ERROR_QUOTA_EXCEEDED" -> "Đã vượt quá giới hạn gửi SMS"
-                            else -> "Gửi OTP thất bại: ${e.message}"
-                        }
-                    }
-                    else -> "Lỗi kết nối: ${e.message}"
+                    is FirebaseAuthInvalidCredentialsException -> "Số điện thoại không hợp lệ"
+                    is FirebaseTooManyRequestsException -> "Quá nhiều yêu cầu. Vui lòng thử lại sau"
+                    is FirebaseAuthException -> "Lỗi xác thực: ${e.message}"
+                    else -> "Gửi OTP thất bại: ${e.message}"
                 }
+
                 trySend(OTPResult.Error(Exception(errorMessage)))
-                close(e)
+                close()
             }
 
-            override fun onCodeSent(
-                verificationId: String,
-                token: PhoneAuthProvider.ForceResendingToken
-            ) {
-                Log.d(TAG, "Code sent successfully, verificationId: $verificationId")
+            override fun onCodeSent(verificationId: String, token: PhoneAuthProvider.ForceResendingToken) {
+                Log.d(TAG, "Code sent successfully. VerificationId: $verificationId")
                 trySend(OTPResult.Success(verificationId))
             }
         }
 
-        try {
-            val options = PhoneAuthOptions.newBuilder(firebaseAuth)
-                .setPhoneNumber(phoneNumber)
-                .setTimeout(60L, TimeUnit.SECONDS)
-                .setActivity(activity)
-                .setCallbacks(callbacks)
-                .build()
+        val options = PhoneAuthOptions.newBuilder(firebaseAuth)
+            .setPhoneNumber(phoneNumber)
+            .setTimeout(60L, TimeUnit.SECONDS)
+            .setActivity(activity)
+            .setCallbacks(callbacks)
+            .build()
 
+        try {
             PhoneAuthProvider.verifyPhoneNumber(options)
         } catch (e: Exception) {
-            Log.e(TAG, "Exception during OTP send", e)
-            trySend(OTPResult.Error(Exception("Không thể gửi OTP: ${e.message}")))
-            close(e)
+            Log.e(TAG, "Exception starting phone verification", e)
+            trySend(OTPResult.Error(e))
+            close()
         }
 
         awaitClose {
-            Log.d(TAG, "Closing OTP flow")
+            Log.d(TAG, "OTP flow closed")
         }
     }
 
-    override suspend fun verifyOTP(
-        verificationId: String,
-        otp: String
-    ): Result<User> {
-        return try {
-            Log.d(TAG, "Verifying OTP with verificationId: $verificationId")
+    override suspend fun verifyOTP(verificationId: String, otp: String): Result<User> {
+        Log.d(TAG, "🔥 Starting OTP verification")
+        Log.d(TAG, "VerificationId: ${verificationId.take(20)}...")
+        Log.d(TAG, "OTP Code: $otp")
 
+        return try {
+            // Step 1: Create credential
+            Log.d(TAG, "🔥 Step 1: Creating credential")
             val credential = PhoneAuthProvider.getCredential(verificationId, otp)
+
+            // Step 2: Sign in with Firebase
+            Log.d(TAG, "🔥 Step 2: Signing in with Firebase")
             val authResult = firebaseAuth.signInWithCredential(credential).await()
 
-            val currentUser = authResult.user
-            if (currentUser != null) {
-                val phoneNumber = currentUser.phoneNumber ?: ""
-                Log.d(TAG, "Firebase auth successful for phone: $phoneNumber")
-
-                try {
-                    // 🔥 Use phone number as document ID in Firestore
-                    val userDoc = firestore.collection("users")
-                        .document(phoneNumber)
-                        .get(Source.SERVER)
-                        .await()
-
-                    if (!userDoc.exists()) {
-                        Log.w(TAG, "User document not found for phone: $phoneNumber")
-                        return Result.failure(Exception(
-                            "Số điện thoại $phoneNumber chưa được đăng ký trong hệ thống. Liên hệ admin để được cấp tài khoản."
-                        ))
-                    }
-
-                    // Convert Firestore document to User model
-                    val user = mapFirestoreDocumentToUser(userDoc.data!!, phoneNumber)
-
-                    Log.d(TAG, "User loaded successfully: ${user.fullName} (${user.role})")
-
-                    // 🔄 Cache user data locally for offline access
-                    try {
-                        userRepository.saveUserToLocal(user)
-                        Log.d(TAG, "User cached locally")
-                    } catch (cacheException: Exception) {
-                        Log.w(TAG, "Failed to cache user locally", cacheException)
-                        // Continue anyway, local cache is not critical
-                    }
-
-                    Result.success(user)
-
-                } catch (e: Exception) {
-                    Log.e(TAG, "Exception during OTP verification", e)
-
-                    val errorMessage = when {
-                        // Network/offline errors
-                        e.message?.contains("offline", ignoreCase = true) == true ||
-                                e.message?.contains("network", ignoreCase = true) == true -> {
-                            "Không có kết nối mạng. Vui lòng kiểm tra internet và thử lại."
-                        }
-
-                        // Firestore unavailable
-                        e.message?.contains("unavailable", ignoreCase = true) == true -> {
-                            "Dịch vụ tạm thời không khả dụng. Vui lòng thử lại sau."
-                        }
-
-                        // Document not found
-                        e.message?.contains("document", ignoreCase = true) == true -> {
-                            "Số điện thoại chưa được đăng ký trong hệ thống"
-                        }
-
-                        // Permission denied
-                        e.message?.contains("permission", ignoreCase = true) == true -> {
-                            "Không có quyền truy cập. Liên hệ admin."
-                        }
-
-                        else -> "Xác thực thất bại: ${e.message}"
-                    }
-
-                    Result.failure(Exception(errorMessage))
-                }
-            } else {
-                Log.e(TAG, "Firebase auth result is null")
-                Result.failure(IllegalStateException("Xác thực thất bại: Không nhận được thông tin người dùng"))
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Exception during OTP verification", e)
-
-            val errorMessage = when (e) {
-                is FirebaseAuthInvalidCredentialsException -> {
-                    when {
-                        e.message?.contains("invalid-verification-code", ignoreCase = true) == true ->
-                            "Mã OTP không đúng"
-                        e.message?.contains("session-expired", ignoreCase = true) == true ->
-                            "Mã OTP đã hết hạn. Vui lòng gửi lại mã mới"
-                        else -> "Mã OTP không hợp lệ"
-                    }
-                }
-                is FirebaseAuthInvalidUserException -> "Người dùng không hợp lệ"
-                is FirebaseAuthException -> {
-                    when (e.errorCode) {
-                        "ERROR_TOO_MANY_REQUESTS" -> "Quá nhiều yêu cầu xác thực. Vui lòng thử lại sau"
-                        "ERROR_NETWORK_REQUEST_FAILED" -> "Lỗi kết nối mạng. Kiểm tra internet và thử lại"
-                        else -> "Lỗi xác thực Firebase: ${e.message}"
-                    }
-                }
-                else -> "Lỗi xác thực: ${e.message}"
+            val firebaseUser = authResult.user
+            if (firebaseUser == null) {
+                Log.e(TAG, "🔥 ERROR: Firebase user is null after sign in")
+                return Result.failure(Exception("Đăng nhập thất bại: Firebase user null"))
             }
 
+            Log.d(TAG, "🔥 Step 3: Firebase sign in successful")
+            Log.d(TAG, "Firebase User ID: ${firebaseUser.uid}")
+            Log.d(TAG, "Firebase Phone: ${firebaseUser.phoneNumber}")
+
+            // Step 3: Get phone number
+            val phoneNumber = firebaseUser.phoneNumber
+            if (phoneNumber.isNullOrBlank()) {
+                Log.e(TAG, "🔥 ERROR: Phone number is null/blank")
+                return Result.failure(Exception("Không lấy được số điện thoại"))
+            }
+
+            Log.d(TAG, "🔥 Step 4: Getting user from Firestore")
+            // Step 4: Get or create user
+            val user = getOrCreateUser(firebaseUser)
+
+            Log.d(TAG, "🔥 Step 5: Saving user to local cache")
+            // Step 5: Save to local
+            userRepository.saveUserToLocal(user).fold(
+                onSuccess = {
+                    Log.d(TAG, "🔥 User saved to local successfully")
+                },
+                onFailure = { error ->
+                    Log.w(TAG, "🔥 WARNING: Failed to save user to local: ${error.message}")
+                    // Continue anyway, local cache failure shouldn't block login
+                }
+            )
+
+            Log.d(TAG, "🔥 SUCCESS: User verification complete for ${user.phoneNumber}")
+            Result.success(user)
+
+        } catch (e: FirebaseAuthInvalidCredentialsException) {
+            Log.e(TAG, "🔥 FIREBASE AUTH ERROR: ${e.message}", e)
+            val errorMessage = when {
+                e.message?.contains("invalid verification code", ignoreCase = true) == true ->
+                    "Mã OTP không đúng"
+                e.message?.contains("expired", ignoreCase = true) == true ->
+                    "Mã OTP đã hết hạn"
+                else -> "Mã xác thực không hợp lệ: ${e.message}"
+            }
             Result.failure(Exception(errorMessage))
+
+        } catch (e: FirebaseNetworkException) {
+            Log.e(TAG, "🔥 NETWORK ERROR: ${e.message}", e)
+            Result.failure(Exception("Không có kết nối mạng. Vui lòng kiểm tra internet"))
+
+        } catch (e: FirebaseTooManyRequestsException) {
+            Log.e(TAG, "🔥 TOO MANY REQUESTS: ${e.message}", e)
+            Result.failure(Exception("Quá nhiều yêu cầu. Vui lòng thử lại sau"))
+
+        } catch (e: FirebaseException) {
+            Log.e(TAG, "🔥 FIREBASE ERROR: ${e.message}", e)
+            Result.failure(Exception("Lỗi Firebase: ${e.message}"))
+
+        } catch (e: Exception) {
+            Log.e(TAG, "🔥 GENERAL ERROR: ${e.message}", e)
+            Log.e(TAG, "🔥 ERROR CLASS: ${e.javaClass.name}")
+            Log.e(TAG, "🔥 STACK TRACE:", e)
+            Result.failure(Exception("Lỗi không xác định: ${e.javaClass.simpleName} - ${e.message}"))
+        }
+    }
+
+    private suspend fun getOrCreateUser(firebaseUser: FirebaseUser): User {
+        val phoneNumber = firebaseUser.phoneNumber
+            ?: throw Exception("Phone number is null")
+
+        Log.d(TAG, "🔥 Getting user from Firestore for: $phoneNumber")
+
+        // Always create a default user first as fallback
+        val defaultUser = User(
+            phoneNumber = phoneNumber,
+            fullName = firebaseUser.displayName ?: "User ${phoneNumber.takeLast(4)}",
+            email = firebaseUser.email,
+            role = UserRole.INSPECTOR,
+            supervisorPhone = null,
+            profileImageUrl = firebaseUser.photoUrl?.toString()
+        )
+
+        Log.d(TAG, "🔥 Creating default user as fallback: $defaultUser")
+
+        try {
+            Log.d(TAG, "🔥 Attempting to connect to Firestore...")
+
+            // Try to get user from Firestore with a timeout
+            val userDoc = firestore.collection(USERS_COLLECTION)
+                .document(phoneNumber)
+                .get()
+                .await()
+
+            if (userDoc.exists()) {
+                Log.d(TAG, "🔥 User found in Firestore")
+                val userData = userDoc.data
+
+                val user = User(
+                    phoneNumber = userData?.get("phoneNumber") as? String ?: phoneNumber,
+                    fullName = userData?.get("fullName") as? String ?: defaultUser.fullName,
+                    email = userData?.get("email") as? String,
+                    role = try {
+                        UserRole.valueOf(userData?.get("role") as? String ?: "INSPECTOR")
+                    } catch (e: Exception) {
+                        UserRole.INSPECTOR
+                    },
+                    supervisorPhone = userData?.get("supervisorPhone") as? String,
+                    profileImageUrl = userData?.get("profileImageUrl") as? String
+                )
+
+                Log.d(TAG, "🔥 Successfully loaded user from Firestore: $user")
+                return user
+
+            } else {
+                Log.d(TAG, "🔥 User not found in Firestore, saving default user")
+
+                // Try to save new user (don't fail if it doesn't work)
+                try {
+                    firestore.collection(USERS_COLLECTION)
+                        .document(phoneNumber)
+                        .set(defaultUser)
+                        .await()
+                    Log.d(TAG, "🔥 Default user saved to Firestore")
+                } catch (saveError: Exception) {
+                    Log.w(TAG, "🔥 Could not save to Firestore, continuing anyway: ${saveError.message}")
+                }
+
+                return defaultUser
+            }
+
+        } catch (e: Exception) {
+            Log.w(TAG, "🔥 Firestore error, using default user: ${e.message}")
+
+            // For ANY Firestore error, just return the default user
+            Log.i(TAG, "🔥 Proceeding with offline default user")
+
+            // Try to queue the save for later (fire and forget)
+            try {
+                firestore.collection(USERS_COLLECTION)
+                    .document(phoneNumber)
+                    .set(defaultUser)
+                Log.d(TAG, "🔥 Queued user save for later")
+            } catch (queueError: Exception) {
+                Log.d(TAG, "🔥 Could not queue save, that's ok")
+            }
+
+            return defaultUser
         }
     }
 
@@ -211,34 +260,7 @@ class AuthRepositoryImpl @Inject constructor(
         val phoneNumber = firebaseUser.phoneNumber ?: return null
 
         return try {
-            // First try local cache
-            val cachedUser = userRepository.getUserByPhone(phoneNumber)
-            if (cachedUser != null) {
-                Log.d(TAG, "Returning cached user: ${cachedUser.fullName}")
-                return cachedUser
-            }
-
-            // Fallback to Firestore
-            val userDoc = firestore.collection("users")
-                .document(phoneNumber)
-                .get()
-                .await()
-
-            if (userDoc.exists() && userDoc.data != null) {
-                val user = mapFirestoreDocumentToUser(userDoc.data!!, phoneNumber)
-
-                // Cache for next time
-                try {
-                    userRepository.saveUserToLocal(user)
-                } catch (e: Exception) {
-                    Log.w(TAG, "Failed to cache current user", e)
-                }
-
-                user
-            } else {
-                Log.w(TAG, "Current user document not found in Firestore")
-                null
-            }
+            userRepository.getUserByPhone(phoneNumber)
         } catch (e: Exception) {
             Log.e(TAG, "Error getting current user", e)
             null
@@ -247,175 +269,62 @@ class AuthRepositoryImpl @Inject constructor(
 
     override suspend fun signOut(): Result<Unit> {
         return try {
-            Log.d(TAG, "Signing out user")
             firebaseAuth.signOut()
-
-            // Optional: Clear local cache
-            try {
-                userRepository.clearLocalCache()
-            } catch (e: Exception) {
-                Log.w(TAG, "Failed to clear local cache during signout", e)
-            }
-
+            userRepository.clearLocalCache()
+            Log.d(TAG, "User signed out successfully")
             Result.success(Unit)
         } catch (e: Exception) {
-            Log.e(TAG, "Error during signout", e)
-            Result.failure(Exception("Đăng xuất thất bại: ${e.message}"))
+            Log.e(TAG, "Sign out failed", e)
+            Result.failure(e)
         }
     }
 
     override fun isUserLoggedIn(): Boolean {
-        val isLoggedIn = firebaseAuth.currentUser != null
-        Log.d(TAG, "User logged in status: $isLoggedIn")
-        return isLoggedIn
+        return firebaseAuth.currentUser != null
     }
 
-    override suspend fun updateUserProfile(
-        displayName: String?,
-        email: String?
-    ): Result<Unit> {
-        val currentUser = firebaseAuth.currentUser
-        if (currentUser == null) {
-            return Result.failure(IllegalStateException("Người dùng chưa đăng nhập"))
-        }
-
-        val phoneNumber = currentUser.phoneNumber
-        if (phoneNumber.isNullOrBlank()) {
-            return Result.failure(IllegalStateException("Không tìm thấy số điện thoại"))
-        }
+    override suspend fun updateUserProfile(displayName: String?, email: String?): Result<Unit> {
+        val user = firebaseAuth.currentUser ?: return Result.failure(Exception("User not logged in"))
 
         return try {
-            // Update Firebase Auth profile
-            if (!displayName.isNullOrBlank()) {
-                val profileUpdates = UserProfileChangeRequest.Builder()
-                    .setDisplayName(displayName)
-                    .build()
-                currentUser.updateProfile(profileUpdates).await()
-            }
+            val profileUpdates = UserProfileChangeRequest.Builder()
+                .apply {
+                    displayName?.let { setDisplayName(it) }
+                }
+                .build()
 
-            // Update email if provided
-            if (!email.isNullOrBlank()) {
-                currentUser.updateEmail(email).await()
-            }
+            user.updateProfile(profileUpdates).await()
+            email?.let { user.updateEmail(it).await() }
 
-            // Update Firestore document
-            val updates = mutableMapOf<String, Any>()
-            if (!displayName.isNullOrBlank()) {
-                updates["fullName"] = displayName
-            }
-            if (!email.isNullOrBlank()) {
-                updates["email"] = email
-            }
-
-            if (updates.isNotEmpty()) {
-                firestore.collection("users")
-                    .document(phoneNumber)
-                    .update(updates)
-                    .await()
-
-                Log.d(TAG, "User profile updated successfully")
-            }
-
+            Log.d(TAG, "User profile updated successfully")
             Result.success(Unit)
         } catch (e: Exception) {
-            Log.e(TAG, "Error updating user profile", e)
-            val errorMessage = when (e) {
-                is FirebaseAuthRecentLoginRequiredException ->
-                    "Cần đăng nhập lại để cập nhật thông tin"
-                is FirebaseAuthInvalidUserException ->
-                    "Người dùng không hợp lệ"
-                else -> "Cập nhật thông tin thất bại: ${e.message}"
-            }
-            Result.failure(Exception(errorMessage))
+            Log.e(TAG, "Update profile failed", e)
+            Result.failure(e)
         }
     }
 
     override suspend fun deleteAccount(): Result<Unit> {
-        val currentUser = firebaseAuth.currentUser
-        if (currentUser == null) {
-            return Result.failure(IllegalStateException("Người dùng chưa đăng nhập"))
-        }
-
-        val phoneNumber = currentUser.phoneNumber ?: ""
+        val user = firebaseAuth.currentUser ?: return Result.failure(Exception("User not logged in"))
 
         return try {
-            // Delete Firestore document first
-            if (phoneNumber.isNotBlank()) {
-                firestore.collection("users")
-                    .document(phoneNumber)
-                    .delete()
-                    .await()
-                Log.d(TAG, "User document deleted from Firestore")
-            }
-
-            // Delete Firebase Auth account
-            currentUser.delete().await()
-            Log.d(TAG, "Firebase Auth account deleted")
-
-            // Clear local cache
-            try {
-                userRepository.clearLocalCache()
-            } catch (e: Exception) {
-                Log.w(TAG, "Failed to clear cache during account deletion", e)
-            }
-
+            user.delete().await()
+            userRepository.clearLocalCache()
+            Log.d(TAG, "Account deleted successfully")
             Result.success(Unit)
         } catch (e: Exception) {
-            Log.e(TAG, "Error deleting account", e)
-            val errorMessage = when (e) {
-                is FirebaseAuthRecentLoginRequiredException ->
-                    "Cần đăng nhập lại để xóa tài khoản"
-                is FirebaseAuthInvalidUserException ->
-                    "Tài khoản không hợp lệ"
-                else -> "Xóa tài khoản thất bại: ${e.message}"
-            }
-            Result.failure(Exception(errorMessage))
+            Log.e(TAG, "Delete account failed", e)
+            Result.failure(e)
         }
     }
 
     override suspend fun refreshUser(): Result<User?> {
-        val currentUser = firebaseAuth.currentUser
-        if (currentUser == null) {
-            Log.d(TAG, "No current user to refresh")
-            return Result.success(null)
-        }
-
         return try {
-            // Reload Firebase Auth user
-            currentUser.reload().await()
-
-            // Get updated user data from Firestore
-            val user = getCurrentUser()
-
-            Log.d(TAG, "User refreshed successfully")
-            Result.success(user)
+            val currentUser = getCurrentUser()
+            Result.success(currentUser)
         } catch (e: Exception) {
-            Log.e(TAG, "Error refreshing user", e)
-            Result.failure(Exception("Làm mới thông tin người dùng thất bại: ${e.message}"))
+            Log.e(TAG, "Refresh user failed", e)
+            Result.failure(e)
         }
-    }
-
-    // 🔧 Helper function to map Firestore document to User model
-    private fun mapFirestoreDocumentToUser(data: Map<String, Any>, phoneNumber: String): User {
-        return User(
-            phoneNumber = data["phoneNumber"] as? String ?: phoneNumber,
-            fullName = data["fullName"] as? String ?: "Unknown User",
-            email = data["email"] as? String,
-            role = try {
-                UserRole.valueOf(data["role"] as? String ?: "INSPECTOR")
-            } catch (e: IllegalArgumentException) {
-                Log.w(TAG, "Invalid role in Firestore, defaulting to INSPECTOR", e)
-                UserRole.INSPECTOR
-            },
-            supervisorPhone = data["supervisorPhone"] as? String,
-            profileImageUrl = data["profileImageUrl"] as? String
-        )
-    }
-    private fun isNetworkAvailable(): Boolean {
-        val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-        val network = connectivityManager.activeNetwork ?: return false
-        val capabilities = connectivityManager.getNetworkCapabilities(network) ?: return false
-        return capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ||
-                capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)
     }
 }

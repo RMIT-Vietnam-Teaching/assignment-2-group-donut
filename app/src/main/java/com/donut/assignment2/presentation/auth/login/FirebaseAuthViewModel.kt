@@ -130,17 +130,7 @@ class FirebaseAuthViewModel @Inject constructor(
                     .onFailure { error ->
                         Log.e(TAG, "OTP verification failed", error)
 
-                        val errorMessage = when {
-                            error.message?.contains("invalid-verification-code", ignoreCase = true) == true ->
-                                "Mã OTP không đúng"
-                            error.message?.contains("session-expired", ignoreCase = true) == true ->
-                                "Phiên xác thực đã hết hạn. Vui lòng gửi lại OTP"
-                            error.message?.contains("too-many-requests", ignoreCase = true) == true ->
-                                "Quá nhiều yêu cầu. Vui lòng thử lại sau"
-                            error.message?.contains("network", ignoreCase = true) == true ->
-                                "Lỗi kết nối mạng. Vui lòng kiểm tra internet"
-                            else -> "Xác thực thất bại: ${error.message}"
-                        }
+                        val errorMessage = getErrorMessage(error)
 
                         _uiState.value = _uiState.value.copy(
                             isLoading = false,
@@ -153,6 +143,49 @@ class FirebaseAuthViewModel @Inject constructor(
                     isLoading = false,
                     errorMessage = "Lỗi không xác định: ${e.message}"
                 )
+            }
+        }
+    }
+
+    private fun getErrorMessage(error: Throwable): String {
+        val errorMsg = error.message?.lowercase() ?: ""
+        Log.d(TAG, "Processing error: $errorMsg")
+
+        return when {
+            errorMsg.contains("invalid-verification-code") ||
+                    errorMsg.contains("invalid verification code") ||
+                    errorMsg.contains("the verification code") -> {
+                "Mã OTP không đúng. Vui lòng kiểm tra lại."
+            }
+
+            errorMsg.contains("session-expired") ||
+                    errorMsg.contains("expired") ||
+                    errorMsg.contains("timeout") -> {
+                "Phiên xác thực đã hết hạn. Vui lòng gửi lại OTP."
+            }
+
+            errorMsg.contains("too-many-requests") ||
+                    errorMsg.contains("quota") ||
+                    errorMsg.contains("limit") -> {
+                "Quá nhiều yêu cầu. Vui lòng thử lại sau vài phút."
+            }
+
+            errorMsg.contains("network") ||
+                    errorMsg.contains("internet") ||
+                    errorMsg.contains("connection") ||
+                    errorMsg.contains("host") ||
+                    errorMsg.contains("unreachable") -> {
+                "Lỗi kết nối mạng. Vui lòng kiểm tra internet và thử lại."
+            }
+
+            errorMsg.contains("firebase") && errorMsg.contains("app") -> {
+                "Lỗi cấu hình Firebase. Vui lòng liên hệ hỗ trợ."
+            }
+
+            else -> {
+                // Log full error để debug
+                Log.e(TAG, "Unhandled error: ${error.message}")
+                "Xác thực thất bại. Vui lòng thử lại sau. (${error.javaClass.simpleName})"
             }
         }
     }

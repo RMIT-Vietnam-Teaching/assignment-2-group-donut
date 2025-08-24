@@ -26,8 +26,8 @@ data class DefectEntity(
     val id: String,
     val reportId: String,
     val photoId: String,
-    val type: String, // DefectType as String
-    val severity: String, // DefectSeverity as String
+    val type: String,
+    val severity: String,
     val description: String,
     val confidence: Float,
     val isMLDetected: Boolean,

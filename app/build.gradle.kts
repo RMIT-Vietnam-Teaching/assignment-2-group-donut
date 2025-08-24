@@ -2,10 +2,10 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     id("org.jetbrains.kotlin.plugin.compose")
-    id("kotlin-kapt")                       // Consider managing this via catalog too
-    id("dagger.hilt.android.plugin")        // Consider managing this via catalog too
-    id("kotlin-parcelize")                  // Consider managing this via catalog too
-    id("com.google.gms.google-services")    // Consider managing this via catalog too
+    id("kotlin-kapt")
+    id("dagger.hilt.android.plugin")
+    id("kotlin-parcelize")
+    id("com.google.gms.google-services")
 }
 
 android {
@@ -50,19 +50,13 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")
     implementation("androidx.activity:activity-compose:1.8.2")
 
-    implementation(platform("com.google.firebase:firebase-bom:33.1.2")) // Đảm bảo bạn có BOM
-    implementation("com.google.firebase:firebase-appcheck-playintegrity")
-    implementation("androidx.hilt:hilt-navigation-compose:1.2.0")
-
-    // Accompanist SwipeRefresh (Lưu ý: Thư viện này đang dần được thay thế bởi thư viện chính thức,
-    // nhưng vẫn dùng tốt cho project hiện tại)
-    implementation("com.google.accompanist:accompanist-swiperefresh:0.27.0")
-    // Firebase Authentication
-    implementation("com.google.firebase:firebase-auth")
-    implementation("com.google.firebase:firebase-firestore-ktx")
-
-    // Firebase Analytics (optional)
+    // 🔥 Firebase
+    implementation(platform("com.google.firebase:firebase-bom:33.1.2"))
     implementation("com.google.firebase:firebase-analytics")
+    implementation("com.google.firebase:firebase-auth-ktx")
+    implementation("com.google.firebase:firebase-firestore-ktx")
+    implementation("com.google.firebase:firebase-storage-ktx")
+    implementation("com.google.firebase:firebase-appcheck-playintegrity")
 
     // Play Services Auth
     implementation("com.google.android.gms:play-services-auth:20.7.0")
@@ -76,16 +70,15 @@ dependencies {
     implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.compose.material3:material3")
+    implementation("androidx.compose.material:material-icons-extended:1.6.1")
 
     // Navigation
     implementation("androidx.navigation:navigation-compose:2.7.5")
 
-    implementation("androidx.compose.material:material-icons-extended:1.6.1")
-
     // Hilt - Dependency Injection
     implementation("com.google.dagger:hilt-android:2.48.1")
     kapt("com.google.dagger:hilt-android-compiler:2.48.1")
-    implementation("androidx.hilt:hilt-navigation-compose:1.1.0")
+    implementation("androidx.hilt:hilt-navigation-compose:1.2.0")  // ← Cập nhật version
 
     // Room Database
     implementation("androidx.room:room-runtime:2.6.1")
@@ -108,6 +101,7 @@ dependencies {
 
     // Permissions
     implementation("com.google.accompanist:accompanist-permissions:0.32.0")
+    implementation("com.google.accompanist:accompanist-swiperefresh:0.32.0")  // ← Cập nhật version
 
     // Date/Time handling
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")

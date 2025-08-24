@@ -19,12 +19,12 @@ data class ReportEntity(
     val title: String,
     val description: String,
     val location: String,
-    val inspectorPhone: String,      // 🔥 Changed from inspectorId
+    val inspectorPhone: String,
     val status: String,
     val createdAt: LocalDateTime,
     val updatedAt: LocalDateTime,
     val submittedAt: LocalDateTime?,
     val reviewedAt: LocalDateTime?,
-    val supervisorPhone: String?,    // 🔥 Changed from supervisorId
+    val supervisorPhone: String?,
     val supervisorNotes: String
 )

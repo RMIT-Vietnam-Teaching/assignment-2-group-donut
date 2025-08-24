@@ -20,9 +20,6 @@ fun LocalDateTime.toEpochMilli(): Long {
 }
 // Firestore specific mapping functions
 fun DocumentSnapshot.toUser(): User {
-    // You need to update the User domain model to include these fields for this to work
-    val createdAt = getLong("createdAt") ?: 0L
-    val updatedAt = getLong("updatedAt") ?: 0L
 
     return User(
         phoneNumber = getString("phoneNumber") ?: "",
