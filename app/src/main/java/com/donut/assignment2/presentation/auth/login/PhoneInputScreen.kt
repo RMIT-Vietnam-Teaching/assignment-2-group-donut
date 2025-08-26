@@ -112,7 +112,7 @@ fun PhoneInputScreen(
             // Subtitle
             Row {
                 Text(
-                    text = "We'll send you an OTP to verify ",
+                    text = "We'll send OTP to verify ",
                     fontSize = 16.sp,
                     color = Color.LightGray,
                     textAlign = TextAlign.Center,
@@ -147,7 +147,8 @@ fun PhoneInputScreen(
                     focusedContainerColor = Color.White,
                     unfocusedContainerColor = Color.White,
                     focusedTextColor = Color.Black,
-                    unfocusedTextColor = Color.Black
+                    unfocusedTextColor = Color.Black,
+                    errorTextColor = Color.White,
                 ),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
                 singleLine = true,
