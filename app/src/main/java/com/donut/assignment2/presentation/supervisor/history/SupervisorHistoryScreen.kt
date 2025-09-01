@@ -1,7 +1,8 @@
-package com.donut.assignment2.presentation.supervisor.dashboard
+package com.donut.assignment2.presentation.supervisor.history
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -13,9 +14,7 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 
 @Composable
-fun SupervisorDashboardScreen(
-    navController: NavController
-) {
+fun SupervisorHistoryScreen(navController: NavController) {
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -23,10 +22,11 @@ fun SupervisorDashboardScreen(
         contentAlignment = Alignment.Center
     ) {
         Text(
-           "Supervisor Dashboard Screen",
+            "Supervisor History Screen",
             fontSize = 24.sp,
             color = Color.White,
             textAlign = TextAlign.Center
         )
     }
+
 }

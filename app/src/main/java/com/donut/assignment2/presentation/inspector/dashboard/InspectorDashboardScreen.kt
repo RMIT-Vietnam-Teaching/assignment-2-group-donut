@@ -30,61 +30,70 @@ import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun InspectorDashboardScreen(
-    userId: String,
     navController: NavController,
-    viewModel: InspectorDashboardViewModel = hiltViewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsState()
-    val swipeRefreshState = rememberSwipeRefreshState(isRefreshing = uiState.isRefreshing)
-
-    LaunchedEffect(userId) {
-        viewModel.loadDashboard(userId)
-    }
-
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Dashboard", color = Color.White) },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = DarkCharcoal)
-            )
-        },
-        containerColor = DarkCharcoal
-    ) { innerPadding ->
-        SwipeRefresh(
-            state = swipeRefreshState,
-            onRefresh = { viewModel.refreshDashboard(userId) },
-            modifier = Modifier.padding(innerPadding)
-        ) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                if (uiState.showLoading) {
-                    CircularProgressIndicator(color = SafetyYellow)
-                }
-
-                uiState.errorMessage?.let { error ->
-                    AlertDialog(
-                        onDismissRequest = { viewModel.clearError() },
-                        title = { Text("Lỗi") },
-                        text = { Text(error) },
-                        confirmButton = {
-                            TextButton(onClick = { viewModel.retryLoad(userId) }) {
-                                Text("Thử lại")
-                            }
-                        }
-                    )
-                }
-
-                uiState.dashboard?.let { dashboard ->
-                    if (dashboard.isFirstTimeUser) {
-                        EmptyDashboardView(navController)
-                    } else {
-                        DashboardContent(dashboard, navController)
-                    }
-                }
-            }
-        }
+//    val viewModel: InspectorDashboardViewModel = hiltViewModel()
+//    val userId = viewModel.getCurrentUserId()
+//    val uiState by viewModel.uiState.collectAsState()
+//    val swipeRefreshState = rememberSwipeRefreshState(isRefreshing = uiState.isRefreshing)
+//
+//    LaunchedEffect(userId) {
+//        viewModel.loadDashboard(userId)
+//    }
+//
+//    Scaffold(
+//        topBar = {
+//            TopAppBar(
+//                title = { Text("Dashboard", color = Color.White) },
+//                colors = TopAppBarDefaults.topAppBarColors(containerColor = DarkCharcoal)
+//            )
+//        },
+//        containerColor = DarkCharcoal
+//    ) { innerPadding ->
+//        SwipeRefresh(
+//            state = swipeRefreshState,
+//            onRefresh = { viewModel.refreshDashboard(userId) },
+//            modifier = Modifier.padding(innerPadding)
+//        ) {
+//            Box(
+//                modifier = Modifier.fillMaxSize(),
+//                contentAlignment = Alignment.Center
+//            ) {
+//                if (uiState.showLoading) {
+//                    CircularProgressIndicator(color = SafetyYellow)
+//                }
+//
+//                uiState.errorMessage?.let { error ->
+//                    AlertDialog(
+//                        onDismissRequest = { viewModel.clearError() },
+//                        title = { Text("Lỗi") },
+//                        text = { Text(error) },
+//                        confirmButton = {
+//                            TextButton(onClick = { viewModel.retryLoad(userId) }) {
+//                                Text("Thử lại")
+//                            }
+//                        }
+//                    )
+//                }
+//
+//                uiState.dashboard?.let { dashboard ->
+//                    if (dashboard.isFirstTimeUser) {
+//                        EmptyDashboardView(navController)
+//                    } else {
+//                        DashboardContent(dashboard, navController)
+//                    }
+//                }
+//            }
+//        }
+//    }
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(DarkCharcoal),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ){
+        Text("Inspector Dashboard Screen")
     }
 }
 
