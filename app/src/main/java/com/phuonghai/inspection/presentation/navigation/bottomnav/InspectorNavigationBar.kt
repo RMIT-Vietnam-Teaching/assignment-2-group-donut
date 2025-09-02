@@ -19,6 +19,7 @@ import androidx.navigation.compose.rememberNavController
 import com.phuonghai.inspection.presentation.home.inspector.InspectorDashboard
 import com.phuonghai.inspection.presentation.home.inspector.InspectorNewReportScreen
 import com.phuonghai.inspection.presentation.home.inspector.InspectorNotificationScreen
+import com.phuonghai.inspection.presentation.home.inspector.InspectorProfileScreen
 import com.phuonghai.inspection.presentation.navigation.Screen
 
 enum class InspectorDestination(
@@ -28,10 +29,10 @@ enum class InspectorDestination(
     val selectedIcon: ImageVector,
     val contentDescription: String
 ) {
-    DASHBOARD("inspector_dashboard", "Dashboard", Icons.Outlined.Home, Icons.Filled.Home, "Dashboard"),
-    REPORTS("inspector_reports", "New Report", Icons.Outlined.Description, Icons.Filled.Description, "New Report"),
-    NOTIFICATIONS("inspector_notifications", "Notifications", Icons.Outlined.Notifications, Icons.Filled.Notifications, "Notifications"),
-    PROFILE("inspector_profile", "Profile", Icons.Outlined.Person, Icons.Filled.Person, "Profile")
+    DASHBOARD(Screen.InspectorDashboard.route, "Dashboard", Icons.Outlined.Home, Icons.Filled.Home, "Dashboard"),
+    REPORTS(Screen.InspectorNewReportScreen.route, "New Report", Icons.Outlined.Description, Icons.Filled.Description, "New Report"),
+    NOTIFICATIONS(Screen.InspectorNotificationScreen.route, "Notifications", Icons.Outlined.Notifications, Icons.Filled.Notifications, "Notifications"),
+    PROFILE(Screen.InspectorProfileScreen.route, "Profile", Icons.Outlined.Person, Icons.Filled.Person, "Profile")
 }
 
 @Composable
@@ -96,27 +97,5 @@ fun InspectorNavigationBar(modifier: Modifier = Modifier) {
             startDestination,
             modifier = Modifier.padding(contentPadding)
         )
-    }
-}
-
-@Composable
-fun InspectorNewReportScreen() {
-    // Placeholder screen
-    androidx.compose.foundation.layout.Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = androidx.compose.ui.Alignment.Center
-    ) {
-        Text("Inspector Reports Screen")
-    }
-}
-
-@Composable
-fun InspectorProfileScreen() {
-    // Placeholder screen
-    androidx.compose.foundation.layout.Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = androidx.compose.ui.Alignment.Center
-    ) {
-        Text("Inspector Profile Screen")
     }
 }
