@@ -52,7 +52,7 @@ fun InspectorInfoCard(user: com.phuonghai.inspection.domain.model.User?) {
                     modifier = Modifier.size(28.dp)
                 )
                 Text(
-                    text = "Inspector info",
+                    text = "Thông tin Inspector",
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
@@ -69,7 +69,7 @@ fun InspectorInfoCard(user: com.phuonghai.inspection.domain.model.User?) {
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 InfoRow(
-                    label = "fullName:",
+                    label = "Họ và tên:",
                     value = user?.fullName ?: "Chưa cập nhật",
                     icon = Icons.Default.Badge
                 )
@@ -95,8 +95,8 @@ fun InspectorInfoCard(user: com.phuonghai.inspection.domain.model.User?) {
                 InfoRow(
                     label = "Vai trò:",
                     value = when(user?.role?.name) {
-                        "INSPECTOR" -> "INSPECTOR"
-                        "SUPERVISOR" -> "SUPERVISOR"
+                        "INSPECTOR" -> "Nhân viên kiểm tra"
+                        "SUPERVISOR" -> "Giám sát viên"
                         else -> "Chưa xác định"
                     },
                     icon = Icons.Default.Work,
@@ -107,7 +107,7 @@ fun InspectorInfoCard(user: com.phuonghai.inspection.domain.model.User?) {
                     InfoRow(
                         label = "Supervisor:",
                         value = user?.supervisorPhone ?: "",
-                        icon = Icons.Default.ManageAccounts
+                        icon = Icons.Default.SupervisorAccount
                     )
                 }
             }
@@ -131,7 +131,7 @@ fun InspectorInfoCard(user: com.phuonghai.inspection.domain.model.User?) {
                             )
                     )
                     Text(
-                        text = "Online",
+                        text = "Đang hoạt động",
                         fontSize = 14.sp,
                         color = StatusGreen,
                         fontWeight = FontWeight.Medium
@@ -139,7 +139,7 @@ fun InspectorInfoCard(user: com.phuonghai.inspection.domain.model.User?) {
                 }
 
                 Text(
-                    text = "updated: ${getCurrentDateTime()}",
+                    text = "Cập nhật: ${getCurrentDateTime()}",
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -382,7 +382,7 @@ fun SummarySection(
                 ReportCountCard(
                     "Đã\nduyệt",
                     statistics.approvedReports,
-                    StatusGreen,
+                    StatusGreen, // ✅ Using your StatusGreen
                     modifier = Modifier.weight(1f)
                 )
                 ReportCountCard(
