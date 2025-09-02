@@ -1,5 +1,6 @@
 package com.phuonghai.inspection.presentation.home.supervisor
 
+import android.content.res.Resources
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -21,21 +22,19 @@ import com.phuonghai.inspection.presentation.supervisor.dashboard.PendingReport
 import com.phuonghai.inspection.presentation.supervisor.dashboard.SupervisorDashboardUiState
 import com.phuonghai.inspection.presentation.supervisor.dashboard.SupervisorDashboardViewModel
 import com.phuonghai.inspection.presentation.supervisor.dashboard.TeamStatistics
-
+import com.phuonghai.inspection.presentation.theme.*
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SupervisorDashboard(
     viewModel: SupervisorDashboardViewModel = hiltViewModel()
 ) {
-    val darkCharcoal = Color(0xFF2C2C2C)
-    val safetyYellow = Color(0xFFFFD700)
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Supervisor Dashboard", color = Color.White) },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = darkCharcoal),
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = DarkCharcoal),
                 actions = {
                     IconButton(onClick = { viewModel.refreshDashboard() }) {
                         Icon(
@@ -47,7 +46,7 @@ fun SupervisorDashboard(
                 }
             )
         },
-        containerColor = darkCharcoal
+        containerColor = DarkCharcoal
     ) { innerPadding ->
         Box(
             modifier = Modifier
@@ -60,7 +59,7 @@ fun SupervisorDashboard(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
                     ) {
-                        CircularProgressIndicator(color = safetyYellow)
+                        CircularProgressIndicator(color = SafetyYellow)
                     }
                 }
 

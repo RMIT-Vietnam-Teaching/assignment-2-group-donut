@@ -17,20 +17,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.phuonghai.inspection.presentation.home.inspector.report.NewReportViewModel
-
-// Design system colors
-private val DarkCharcoal = Color(0xFF1E1E1E)
-private val OffWhite = Color(0xFFFAFAFA)
-private val SafetyYellow = Color(0xFFFFD700)
-private val StatusGreen = Color(0xFF4CAF50)
-private val StatusRed = Color(0xFFE53935)
-private val StatusOrange = Color(0xFFFB8C00)
-private val TextSecondary = Color(0xFF6B7280)
-private val SurfaceDark = Color(0xFF222222)
-private val SurfaceDarkHigh = Color(0xFF2A2A2A)
-private val InputBgDark = Color(0xFF242424)
-private val BorderDark = Color(0xFF3A3A3A)
-
+import com.phuonghai.inspection.presentation.theme.*
 private object Dimens {
     val ScreenPadding = 16.dp
     val Space8 = 8.dp
@@ -317,7 +304,7 @@ private fun StatusChip(
 ) {
     val color = when (item) {
         "Passed" -> StatusGreen
-        "Failed" -> StatusRed
+        "Failed" -> SafetyRed
         "Pending" -> StatusOrange
         else -> StatusOrange // "Needs Attention"
     }
