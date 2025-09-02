@@ -19,6 +19,184 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.phuonghai.inspection.presentation.theme.*
+import java.text.SimpleDateFormat
+import java.util.*
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun InspectorInfoCard(user: com.phuonghai.inspection.domain.model.User?) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 8.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            // Header with icon and title
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Person,
+                    contentDescription = "Inspector Info",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(28.dp)
+                )
+                Text(
+                    text = "Inspector info",
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+
+            Divider(
+                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+                thickness = 1.dp
+            )
+
+            // Inspector details
+            Column(
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                InfoRow(
+                    label = "fullName:",
+                    value = user?.fullName ?: "Chưa cập nhật",
+                    icon = Icons.Default.Badge
+                )
+
+                InfoRow(
+                    label = "ID Inspector:",
+                    value = "INSP-${user?.uid?.take(6)?.uppercase() ?: "000000"}",
+                    icon = Icons.Default.Numbers
+                )
+
+                InfoRow(
+                    label = "Số điện thoại:",
+                    value = user?.phoneNumber ?: "Chưa cập nhật",
+                    icon = Icons.Default.Phone
+                )
+
+                InfoRow(
+                    label = "Email:",
+                    value = user?.email ?: "Chưa cập nhật",
+                    icon = Icons.Default.Email
+                )
+
+                InfoRow(
+                    label = "Vai trò:",
+                    value = when(user?.role?.name) {
+                        "INSPECTOR" -> "INSPECTOR"
+                        "SUPERVISOR" -> "SUPERVISOR"
+                        else -> "Chưa xác định"
+                    },
+                    icon = Icons.Default.Work,
+                    valueColor = MaterialTheme.colorScheme.primary
+                )
+
+                if (!user?.supervisorPhone.isNullOrBlank()) {
+                    InfoRow(
+                        label = "Supervisor:",
+                        value = user?.supervisorPhone ?: "",
+                        icon = Icons.Default.ManageAccounts
+                    )
+                }
+            }
+
+            // Status indicator
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(10.dp)
+                            .background(
+                                StatusGreen,
+                                shape = androidx.compose.foundation.shape.CircleShape
+                            )
+                    )
+                    Text(
+                        text = "Online",
+                        fontSize = 14.sp,
+                        color = StatusGreen,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+
+                Text(
+                    text = "updated: ${getCurrentDateTime()}",
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun InfoRow(
+    label: String,
+    value: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    valueColor: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.onSurface
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = label,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(20.dp)
+        )
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = label,
+                fontSize = 14.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontWeight = FontWeight.Medium,
+                modifier = Modifier.weight(0.4f)
+            )
+
+            Text(
+                text = value,
+                fontSize = 14.sp,
+                color = valueColor,
+                fontWeight = FontWeight.Normal,
+                modifier = Modifier.weight(0.6f),
+                textAlign = TextAlign.End
+            )
+        }
+    }
+}
+
+// Helper function to get current date time
+private fun getCurrentDateTime(): String {
+    val sdf = java.text.SimpleDateFormat("dd/MM/yyyy HH:mm", java.util.Locale.getDefault())
+    return sdf.format(java.util.Date())
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -126,6 +304,10 @@ fun DashboardContent(
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
             item {
+                InspectorInfoCard(user)
+            }
+
+            item {
                 SummarySection(user, statistics)
             }
 
@@ -173,10 +355,10 @@ fun SummarySection(
     ) {
         Text(
             "Chào, ${user?.fullName ?: "Inspector"}",
-            fontSize = 28.sp,
+            fontSize = 24.sp, // Reduced from 28.sp
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onBackground,
-            modifier = Modifier.padding(bottom = 24.dp)
+            modifier = Modifier.padding(bottom = 16.dp) // Reduced from 24.dp
         )
 
         // Statistics cards with your color scheme
@@ -200,7 +382,7 @@ fun SummarySection(
                 ReportCountCard(
                     "Đã\nduyệt",
                     statistics.approvedReports,
-                    StatusGreen, // ✅ Using your StatusGreen
+                    StatusGreen,
                     modifier = Modifier.weight(1f)
                 )
                 ReportCountCard(
