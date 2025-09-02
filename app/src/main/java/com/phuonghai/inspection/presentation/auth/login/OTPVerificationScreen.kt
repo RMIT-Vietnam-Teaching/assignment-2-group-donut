@@ -37,6 +37,7 @@ fun OtpScreen(
     val ctx = LocalContext.current
     var otpCode by remember { mutableStateOf("") }
     var localError by remember { mutableStateOf<String?>(null) }
+    var hasNavigated by remember { mutableStateOf(false) } // Prevent multiple navigation
 
     // State từ ViewModel
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
@@ -69,20 +70,23 @@ fun OtpScreen(
         }
     }
 
-    // Điều hướng khi đã có role
     LaunchedEffect(role) {
-        when (role) {
-            UserRole.INSPECTOR -> {
-                navController.navigate("inspector_dashboard") {
-                    popUpTo("login_screen") { inclusive = true }
+        if (role != null && !hasNavigated) {
+            hasNavigated = true
+            when (role) {
+                UserRole.INSPECTOR -> {
+                    navController.navigate("inspector_dashboard") {
+                        popUpTo(0) { inclusive = true } // Clear entire backstack
+                    }
                 }
-            }
-            UserRole.SUPERVISOR -> {
-                navController.navigate("supervisor_dashboard") {
-                    popUpTo("login_screen") { inclusive = true }
+                UserRole.SUPERVISOR -> {
+                    navController.navigate("supervisor_dashboard") {
+                        popUpTo(0) { inclusive = true } // Clear entire backstack
+                    }
                 }
+
+                null -> localError = "role is null"
             }
-            null -> {} // chờ
         }
     }
 
@@ -189,22 +193,24 @@ fun OtpScreen(
                     .fillMaxWidth()
                     .height(50.dp),
                 onClick = {
-                    localError = null
-                    when {
-                        verificationId.isBlank() -> {
-                            localError = "Verification ID not "
-                        }
-                        otpCode.length != 6 -> {
-                            localError = "please input enough 6 number"
-                        }
-                        else -> {
-                            viewModel.verifyCode(verificationId, otpCode)
+                    if (!hasNavigated) { // Prevent multiple clicks
+                        localError = null
+                        when {
+                            verificationId.isBlank() -> {
+                                localError = "Verification ID not found"
+                            }
+                            otpCode.length != 6 -> {
+                                localError = "Please input all 6 numbers"
+                            }
+                            else -> {
+                                viewModel.verifyCode(verificationId, otpCode)
+                            }
                         }
                     }
                 },
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFD700)),
                 shape = RoundedCornerShape(10.dp),
-                enabled = !isLoading && otpCode.length == 6 && verificationId.isNotBlank()
+                enabled = !isLoading && otpCode.length == 6 && verificationId.isNotBlank() && !hasNavigated
             ) {
                 if (isLoading) {
                     CircularProgressIndicator(
@@ -224,17 +230,19 @@ fun OtpScreen(
             Spacer(modifier = Modifier.height(16.dp))
 
             // Back to Phone Button
-            TextButton(
-                onClick = {
-                    navController.popBackStack()
+            if (!hasNavigated) { // Hide when navigating
+                TextButton(
+                    onClick = {
+                        navController.popBackStack()
+                    }
+                ) {
+                    Text(
+                        text = "Change phone number?",
+                        color = Color(0xFFFFD700),
+                        fontSize = 16.sp,
+                        style = TextStyle(textDecoration = TextDecoration.Underline)
+                    )
                 }
-            ) {
-                Text(
-                    text = "Change phone number?",
-                    color = Color(0xFFFFD700),
-                    fontSize = 16.sp,
-                    style = TextStyle(textDecoration = TextDecoration.Underline)
-                )
             }
 
             // Error Message
@@ -250,7 +258,7 @@ fun OtpScreen(
             }
 
             // Debug Info (chỉ hiện trong development)
-            if (com.google.firebase.BuildConfig.DEBUG) {
+            if (com.google.firebase.BuildConfig.DEBUG && !hasNavigated) {
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
                     text = "Debug: loading=$isLoading | msg='$lastMessage' | role=$role",

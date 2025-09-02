@@ -1,5 +1,6 @@
 package com.phuonghai.inspection.presentation.home.inspector
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -17,8 +18,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import java.text.SimpleDateFormat
-import java.util.*
+import com.phuonghai.inspection.presentation.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -43,9 +43,16 @@ fun InspectorDashboard(
     )
 
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background, // ✅ Use theme background
         topBar = {
             TopAppBar(
-                title = { Text("Dashboard", color = MaterialTheme.colorScheme.onSurface) },
+                title = {
+                    Text(
+                        "Dashboard",
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontWeight = FontWeight.Bold
+                    )
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface
                 ),
@@ -59,12 +66,12 @@ fun InspectorDashboard(
                     }
                 }
             )
-        },
-        containerColor = MaterialTheme.colorScheme.background
+        }
     ) { innerPadding ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
                 .padding(innerPadding)
         ) {
             when {
@@ -86,7 +93,6 @@ fun InspectorDashboard(
                 }
 
                 else -> {
-                    // Use sample data for now, replace with uiState data later
                     DashboardContent(
                         user = uiState.currentUser,
                         statistics = sampleStats,
@@ -111,31 +117,46 @@ fun DashboardContent(
     if (isFirstTimeUser) {
         EmptyDashboardView(onCreateReportClick)
     } else {
-        Column(
+        LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
                 .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
-            SummarySection(user, statistics)
-            RecentReportsSection(recentReports)
+            item {
+                SummarySection(user, statistics)
+            }
 
-            Button(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(50.dp),
-                onClick = onCreateReportClick,
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                shape = RoundedCornerShape(10.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Add,
-                    contentDescription = "Tạo báo cáo mới",
-                    tint = MaterialTheme.colorScheme.onPrimary
-                )
-                Spacer(Modifier.width(8.dp))
-                Text("Tạo báo cáo mới", color = MaterialTheme.colorScheme.onPrimary, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            item {
+                RecentReportsSection(recentReports)
+            }
+
+            item {
+                Button(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp),
+                    onClick = onCreateReportClick,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = "Tạo báo cáo mới",
+                        tint = MaterialTheme.colorScheme.onPrimary
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        "Tạo báo cáo mới",
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
         }
     }
@@ -146,15 +167,19 @@ fun SummarySection(
     user: com.phuonghai.inspection.domain.model.User?,
     statistics: DashboardStatistics
 ) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.fillMaxWidth()
+    ) {
         Text(
             "Chào, ${user?.fullName ?: "Inspector"}",
-            fontSize = 26.sp,
+            fontSize = 28.sp,
             fontWeight = FontWeight.Bold,
-            color = Color.White,
-            modifier = Modifier.padding(bottom = 8.dp)
+            color = MaterialTheme.colorScheme.onBackground,
+            modifier = Modifier.padding(bottom = 24.dp)
         )
 
+        // Statistics cards with your color scheme
         Column(
             modifier = Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -162,39 +187,88 @@ fun SummarySection(
         ) {
             // First row - 3 cards
             Row(
-                horizontalArrangement = Arrangement.spacedBy(20.dp),
-                verticalAlignment = Alignment.CenterVertically
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
             ) {
-                ReportCountCard("Pending Review", statistics.pendingReports, Color(0xFF2196F3))
-                ReportCountCard("Đã duyệt", statistics.approvedReports, Color(0xFF4CAF50))
-                ReportCountCard("Từ chối", statistics.rejectedReports, Color(0xFFE53935))
+                ReportCountCard(
+                    "Pending\nReview",
+                    statistics.pendingReports,
+                    StatusBlue,
+                    modifier = Modifier.weight(1f)
+                )
+                ReportCountCard(
+                    "Đã\nduyệt",
+                    statistics.approvedReports,
+                    StatusGreen, // ✅ Using your StatusGreen
+                    modifier = Modifier.weight(1f)
+                )
+                ReportCountCard(
+                    "Từ\nchối",
+                    statistics.rejectedReports,
+                    SafetyRed, // ✅ Using your SafetyRed
+                    modifier = Modifier.weight(1f)
+                )
             }
 
             // Second row - 2 cards (centered)
             Row(
-                horizontalArrangement = Arrangement.spacedBy(20.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Spacer(modifier = Modifier.weight(1f))
-                ReportCountCard("Needs Attention", 2, Color(0xFFFFC107)) // Sample data
-                ReportCountCard("Nháp", statistics.draftReports, Color(0xFF9E9E9E))
-                Spacer(modifier = Modifier.weight(1f))
+                ReportCountCard(
+                    "Needs\nAttention",
+                    2,
+                    StatusOrange, // ✅ Using your StatusOrange
+                    modifier = Modifier.width(120.dp)
+                )
+                ReportCountCard(
+                    "Nháp",
+                    statistics.draftReports,
+                    StatusGray, // ✅ Using your StatusGray
+                    modifier = Modifier.width(120.dp)
+                )
             }
         }
     }
 }
 
 @Composable
-fun ReportCountCard(label: String, count: Int, color: Color) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(
-            text = count.toString(),
-            fontSize = 26.sp,
-            fontWeight = FontWeight.Bold,
-            color = color
-        )
-        Text(text = label, fontSize = 17.sp, color = Color.White)
+fun ReportCountCard(
+    label: String,
+    count: Int,
+    color: Color,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier.height(100.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        shape = RoundedCornerShape(12.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(8.dp)
+        ) {
+            Text(
+                text = count.toString(),
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Bold,
+                color = color
+            )
+            Text(
+                text = label,
+                fontSize = 14.sp,
+                color = MaterialTheme.colorScheme.onSurface,
+                textAlign = TextAlign.Center,
+                lineHeight = 16.sp
+            )
+        }
     }
 }
 
@@ -203,20 +277,24 @@ fun RecentReportsSection(reports: List<ReportItem>) {
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(
             "Báo cáo gần đây",
-            fontSize = 24.sp,
+            fontSize = 22.sp,
             fontWeight = FontWeight.Bold,
-            color = Color.White,
-            modifier = Modifier.padding(bottom = 8.dp)
+            color = MaterialTheme.colorScheme.onBackground,
+            modifier = Modifier.padding(bottom = 12.dp)
         )
 
         if (reports.isEmpty()) {
-            Text("Không có báo cáo gần đây nào.", color = Color.Gray)
+            Text(
+                "Không có báo cáo gần đây nào.",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+            )
         } else {
-            LazyColumn(
-                modifier = Modifier.fillMaxWidth().height(350.dp),
+            Column(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(reports) { report ->
+                reports.forEach { report ->
                     ReportItemCard(report)
                 }
             }
@@ -226,17 +304,15 @@ fun RecentReportsSection(reports: List<ReportItem>) {
 
 @Composable
 fun ReportItemCard(report: ReportItem) {
-    val safetyYellow = Color(0xFFFFD700)
-
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 6.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF2C2C2C)),
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
         shape = RoundedCornerShape(12.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
-        Column(modifier = Modifier.padding(14.dp)) {
+        Column(modifier = Modifier.padding(16.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -245,9 +321,9 @@ fun ReportItemCard(report: ReportItem) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         report.title,
-                        fontSize = 20.sp,
+                        fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color.White
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     Spacer(Modifier.height(4.dp))
                     Text(
@@ -259,83 +335,72 @@ fun ReportItemCard(report: ReportItem) {
                             "DRAFT" -> "Nháp"
                             else -> report.status
                         },
-                        fontSize = 18.sp,
+                        fontSize = 16.sp,
                         fontWeight = FontWeight.Medium,
                         color = when (report.status) {
-                            "PENDING_REVIEW" -> Color(0xFF2196F3)
-                            "APPROVED" -> Color(0xFF4CAF50)
-                            "REJECTED" -> Color(0xFFE53935)
-                            "NEEDS_ATTENTION" -> Color(0xFFFFC107)
-                            "DRAFT" -> Color(0xFF9E9E9E)
-                            else -> Color.Gray
+                            "PENDING_REVIEW" -> StatusBlue
+                            "APPROVED" -> StatusGreen
+                            "REJECTED" -> SafetyRed
+                            "NEEDS_ATTENTION" -> StatusOrange
+                            "DRAFT" -> StatusGray
+                            else -> MaterialTheme.colorScheme.onSurfaceVariant
                         }
                     )
                 }
 
-                // Status response tag
+                // Status badge
                 Surface(
                     color = when (report.status) {
-                        "APPROVED" -> Color(0x334CAF50) // soft green bg
-                        "REJECTED" -> Color(0x33E53935) // soft red bg
-                        "PENDING_REVIEW" -> Color(0x332196F3) // soft blue bg
-                        else -> Color(0xFF444444) // neutral
+                        "APPROVED" -> StatusGreen.copy(alpha = 0.2f)
+                        "REJECTED" -> SafetyRed.copy(alpha = 0.2f)
+                        "PENDING_REVIEW" -> StatusBlue.copy(alpha = 0.2f)
+                        "NEEDS_ATTENTION" -> StatusOrange.copy(alpha = 0.2f)
+                        else -> MaterialTheme.colorScheme.surfaceVariant
                     },
                     shape = RoundedCornerShape(50),
                     tonalElevation = 2.dp
                 ) {
                     Text(
                         text = when (report.status) {
-                            "APPROVED" -> "Approved"
-                            "REJECTED" -> "Rejected"
-                            "PENDING_REVIEW" -> "Pending"
-                            "NEEDS_ATTENTION" -> "Attention"
-                            "DRAFT" -> "Draft"
-                            else -> "Unknown"
+                            "APPROVED" -> "✓"
+                            "REJECTED" -> "✗"
+                            "PENDING_REVIEW" -> "⏳"
+                            "NEEDS_ATTENTION" -> "⚠"
+                            "DRAFT" -> "📝"
+                            else -> "•"
                         },
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
                         color = when (report.status) {
-                            "APPROVED" -> Color(0xFF4CAF50)
-                            "REJECTED" -> Color(0xFFE53935)
-                            "PENDING_REVIEW" -> Color(0xFF2196F3)
-                            "NEEDS_ATTENTION" -> Color(0xFFFFC107)
-                            "DRAFT" -> Color(0xFF9E9E9E)
-                            else -> Color.LightGray
+                            "APPROVED" -> StatusGreen
+                            "REJECTED" -> SafetyRed
+                            "PENDING_REVIEW" -> StatusBlue
+                            "NEEDS_ATTENTION" -> StatusOrange
+                            "DRAFT" -> StatusGray
+                            else -> MaterialTheme.colorScheme.onSurfaceVariant
                         },
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
                     )
                 }
             }
 
             Spacer(Modifier.height(8.dp))
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Text("ID: ${report.id}", fontSize = 18.sp, color = Color.Gray)
-                    Text("Thời gian: ${report.createdAt}", fontSize = 18.sp, color = Color.Gray)
-                }
-
-                // Add notification icon for important reports
-                if (report.status == "NEEDS_ATTENTION" || report.status == "REJECTED") {
-                    Icon(
-                        imageVector = Icons.Default.Notifications,
-                        contentDescription = "Cần chú ý",
-                        tint = safetyYellow,
-                        modifier = Modifier.size(30.dp)
-                    )
-                } else {
-                    Icon(
-                        imageVector = Icons.Default.Description,
-                        contentDescription = "Báo cáo",
-                        tint = Color.Gray,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
+                Text(
+                    "ID: ${report.id}",
+                    fontSize = 14.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    "${report.createdAt}",
+                    fontSize = 14.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
     }
@@ -346,6 +411,7 @@ fun EmptyDashboardView(onCreateReportClick: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
             .padding(24.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
@@ -354,28 +420,36 @@ fun EmptyDashboardView(onCreateReportClick: () -> Unit) {
             imageVector = Icons.Default.Description,
             contentDescription = "Empty Reports",
             modifier = Modifier.size(72.dp),
-            tint = Color.Gray
+            tint = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(modifier = Modifier.height(16.dp))
         Text(
             text = "Chưa có báo cáo nào",
             style = MaterialTheme.typography.titleMedium,
-            color = Color.Gray
+            color = MaterialTheme.colorScheme.onBackground,
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Bold
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
             text = "Bạn chưa có báo cáo nào. Hãy tạo báo cáo đầu tiên để bắt đầu.",
             style = MaterialTheme.typography.bodyMedium,
-            color = Color.Gray,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center
         )
         Spacer(modifier = Modifier.height(24.dp))
         Button(
             onClick = onCreateReportClick,
             shape = RoundedCornerShape(12.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFD700))
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.primary
+            )
         ) {
-            Text("Tạo báo cáo", color = Color.Black)
+            Text(
+                "Tạo báo cáo",
+                color = MaterialTheme.colorScheme.onPrimary,
+                fontWeight = FontWeight.Bold
+            )
         }
     }
 }
@@ -387,23 +461,42 @@ fun ErrorContent(
     onDismiss: () -> Unit
 ) {
     Box(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background),
         contentAlignment = Alignment.Center
     ) {
         AlertDialog(
             onDismissRequest = onDismiss,
-            title = { Text("Lỗi") },
-            text = { Text(message) },
+            title = {
+                Text(
+                    "Lỗi",
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            },
+            text = {
+                Text(
+                    message,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            },
             confirmButton = {
                 TextButton(onClick = onRetry) {
-                    Text("Thử lại")
+                    Text(
+                        "Thử lại",
+                        color = MaterialTheme.colorScheme.primary
+                    )
                 }
             },
             dismissButton = {
                 TextButton(onClick = onDismiss) {
-                    Text("Đóng")
+                    Text(
+                        "Đóng",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
-            }
+            },
+            containerColor = MaterialTheme.colorScheme.surface
         )
     }
 }
