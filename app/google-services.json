@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "659920920800",
+    "project_id": "field-reporting-app-15810",
+    "storage_bucket": "field-reporting-app-15810.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:659920920800:android:c1b864b8eb20711a16f085",
+        "android_client_info": {
+          "package_name": "com.phuonghai.inspection"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB2Sbldrk5mLH_0EG7IGSS56g9I6khk0TM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

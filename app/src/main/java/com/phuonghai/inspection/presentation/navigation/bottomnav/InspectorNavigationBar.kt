@@ -1,0 +1,122 @@
+package com.phuonghai.inspection.presentation.navigation.bottomnav
+
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.unit.dp
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import com.phuonghai.inspection.presentation.home.inspector.InspectorDashboard
+import com.phuonghai.inspection.presentation.home.inspector.InspectorNewReportScreen
+import com.phuonghai.inspection.presentation.home.inspector.InspectorNotificationScreen
+import com.phuonghai.inspection.presentation.navigation.Screen
+
+enum class InspectorDestination(
+    val route: String,
+    val label: String,
+    val unselectedIcon: ImageVector,
+    val selectedIcon: ImageVector,
+    val contentDescription: String
+) {
+    DASHBOARD("inspector_dashboard", "Dashboard", Icons.Outlined.Home, Icons.Filled.Home, "Dashboard"),
+    REPORTS("inspector_reports", "New Report", Icons.Outlined.Description, Icons.Filled.Description, "New Report"),
+    NOTIFICATIONS("inspector_notifications", "Notifications", Icons.Outlined.Notifications, Icons.Filled.Notifications, "Notifications"),
+    PROFILE("inspector_profile", "Profile", Icons.Outlined.Person, Icons.Filled.Person, "Profile")
+}
+
+@Composable
+fun InspectorNavHost(
+    navController: NavHostController,
+    startDestination: InspectorDestination,
+    modifier: Modifier = Modifier
+) {
+    NavHost(
+        navController,
+        startDestination = startDestination.route
+    ) {
+        InspectorDestination.entries.forEach { destination ->
+            composable(destination.route) {
+                when (destination) {
+                    InspectorDestination.DASHBOARD -> InspectorDashboard()
+                    InspectorDestination.REPORTS -> InspectorNewReportScreen()
+                    InspectorDestination.NOTIFICATIONS -> InspectorNotificationScreen()
+                    InspectorDestination.PROFILE -> InspectorProfileScreen()
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun InspectorNavigationBar(modifier: Modifier = Modifier) {
+    val navController = rememberNavController()
+    val startDestination = InspectorDestination.DASHBOARD
+    var selectedDestination by rememberSaveable { mutableIntStateOf(startDestination.ordinal) }
+
+    Scaffold(
+        modifier = modifier,
+        bottomBar = {
+            NavigationBar(windowInsets = NavigationBarDefaults.windowInsets) {
+                InspectorDestination.entries.forEachIndexed { index, destination ->
+                    NavigationBarItem(
+                        selected = selectedDestination == index,
+                        onClick = {
+                            if (selectedDestination != index) {
+                                navController.navigate(route = destination.route)
+                                selectedDestination = index
+                            }
+                        },
+                        icon = {
+                            val displayIcon = if (index == selectedDestination)
+                                destination.selectedIcon else destination.unselectedIcon
+                            Icon(
+                                displayIcon,
+                                contentDescription = destination.contentDescription,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        },
+                        label = { Text(destination.label) }
+                    )
+                }
+            }
+        }
+    ) { contentPadding ->
+        InspectorNavHost(
+            navController,
+            startDestination,
+            modifier = Modifier.padding(contentPadding)
+        )
+    }
+}
+
+@Composable
+fun InspectorNewReportScreen() {
+    // Placeholder screen
+    androidx.compose.foundation.layout.Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = androidx.compose.ui.Alignment.Center
+    ) {
+        Text("Inspector Reports Screen")
+    }
+}
+
+@Composable
+fun InspectorProfileScreen() {
+    // Placeholder screen
+    androidx.compose.foundation.layout.Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = androidx.compose.ui.Alignment.Center
+    ) {
+        Text("Inspector Profile Screen")
+    }
+}
