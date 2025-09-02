@@ -84,7 +84,15 @@ fun InspectorNotificationScreen(
             location = "Retail Store D",
             preview = "Inspector feedback uploaded. Please review and a...",
             type = NotificationType.GENERAL
-        )
+        ),
+        NotificationItem(
+            id = "5",
+            date = "1 Sept 2025",
+            title = "Weekly Site Inspection Report",
+            location = "Factory A | Line 3",
+            preview = "Inspection completed. No major issues found, only ...",
+            type = NotificationType.SUCCESS
+        ),
     )
 
     Scaffold(
@@ -122,7 +130,8 @@ fun InspectorNotificationScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(innerPadding)
-                    .padding(12.dp),
+                    .padding(horizontal = 12.dp)
+                    .padding(bottom = 100.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 sampleNotifications.groupBy { it.date }.forEach { (date, items) ->
