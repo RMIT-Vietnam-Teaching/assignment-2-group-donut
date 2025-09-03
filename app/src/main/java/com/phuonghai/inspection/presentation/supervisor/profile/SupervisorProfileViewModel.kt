@@ -12,7 +12,7 @@ import kotlinx.coroutines.launch
 
 
 @HiltViewModel
-class InspectorProfileViewModel @Inject constructor(
+class SupervisorProfileViewModel @Inject constructor(
     private val getUserInformationUseCase: GetUserInformationUseCase
 ) : ViewModel() {
 

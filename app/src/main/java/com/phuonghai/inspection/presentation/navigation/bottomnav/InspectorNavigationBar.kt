@@ -17,10 +17,10 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.donut.assignment2.presentation.inspector.history.InspectorHistoryReportScreen
+import com.donut.assignment2.presentation.supervisor.profile.InspectorProfileScreen
 import com.phuonghai.inspection.presentation.home.inspector.InspectorDashboard
 import com.phuonghai.inspection.presentation.home.inspector.InspectorNewReportScreen
 import com.phuonghai.inspection.presentation.home.inspector.InspectorNotificationScreen
-import com.phuonghai.inspection.presentation.home.inspector.InspectorProfileScreen
 import com.phuonghai.inspection.presentation.inspector.task.InspectorTaskScreen
 import com.phuonghai.inspection.presentation.navigation.Screen
 
@@ -55,7 +55,7 @@ fun InspectorNavHost(
                     InspectorDestination.Task -> InspectorTaskScreen(navController = navController)
                     InspectorDestination.HISTORY -> InspectorHistoryReportScreen(navController = navController)
                     InspectorDestination.NOTIFICATIONS -> InspectorNotificationScreen()
-                    InspectorDestination.PROFILE -> InspectorProfileScreen()
+                    InspectorDestination.PROFILE -> InspectorProfileScreen(navController = navController)
                 }
             }
 
