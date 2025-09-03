@@ -118,16 +118,16 @@ class AuthRepositoryImpl @Inject constructor(
             val phone = snap.getString("phoneNumber") ?: ""
             val roleStr = snap.getString("role") ?: "INSPECTOR"
             val role = try { UserRole.valueOf(roleStr) } catch (_: Exception) { UserRole.INSPECTOR }
-            val supervisorPhone = snap.getString("supervisorPhone")
+            val supervisorId = snap.getString("supervisorId")
             val profileImageUrl = snap.getString("profileImageUrl")
 
             val user = User(
-                uid = uid,
+                uId = uid,
                 fullName = fullName,
                 email = email,
                 phoneNumber = phone,
                 role = role,
-                supervisorPhone = supervisorPhone,
+                supervisorId = supervisorId,
                 profileImageUrl = profileImageUrl
             )
             Log.d("AuthRepository", "getCurrentUser(): loaded user=$user")
