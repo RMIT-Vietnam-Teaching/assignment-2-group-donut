@@ -20,8 +20,10 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import com.phuonghai.inspection.domain.model.*
 import com.phuonghai.inspection.presentation.home.inspector.report.NewReportViewModel
 import com.phuonghai.inspection.presentation.theme.*
+
 private object Dimens {
     val ScreenPadding = 16.dp
     val Space8 = 8.dp
@@ -34,20 +36,18 @@ private object Dimens {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun InspectorNewReportScreen(navController: NavController) {
-    var viewModel: NewReportViewModel = hiltViewModel()
+    val viewModel: NewReportViewModel = hiltViewModel()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
-    var title by remember { mutableStateOf("") }
-    var notes by remember { mutableStateOf("") }
-    var score by remember { mutableStateOf("") }
-    var outcome by remember { mutableStateOf("") }
-    var status by remember { mutableStateOf("Passed") }
-    var inspectionType by remember { mutableStateOf("Electrical") }
+    var title by remember { mutableStateOf(uiState.title) }
+    var notes by remember { mutableStateOf(uiState.notes) }
+    var score by remember { mutableStateOf(uiState.score) }
+    var status by remember { mutableStateOf(uiState.status) }
+    var inspectionType by remember { mutableStateOf(uiState.inspectionType) }
 
-    val inspectionOptions = listOf(
-        "Electrical", "Fire Safety", "Structural",
-        "Food Hygiene", "Environmental", "Machinery"
-    )
+    val inspectionOptions = InspectionType.entries.map { it.name.replace("_", " ").lowercase().capitalizeWords() }
+    val statusOptions = AssignStatus.entries.filter { it != AssignStatus.DRAFT && it != AssignStatus.PENDING_REVIEW }
+        .map { it.name.replace("_", " ").lowercase().capitalizeWords() }
 
     LaunchedEffect(Unit) {
         viewModel.loadInspectorInfo()
@@ -146,6 +146,7 @@ fun InspectorNewReportScreen(navController: NavController) {
                 colors = tfColors,
                 modifier = Modifier.fillMaxWidth()
             )
+
             // Media attachments section
             Text("Attachments", style = MaterialTheme.typography.titleSmall, color = OffWhite)
 
@@ -182,66 +183,20 @@ fun InspectorNewReportScreen(navController: NavController) {
                 }
             }
 
-//            // TODO: show preview thumbnails
-//            LazyRow(
-//                horizontalArrangement = Arrangement.spacedBy(8.dp),
-//                modifier = Modifier.fillMaxWidth()
-//            ) {
-//                items(uiState.mediaItems) { media ->
-//                    Card(
-//                        modifier = Modifier.size(100.dp),
-//                        shape = RoundedCornerShape(8.dp)
-//                    ) {
-//                        if (media.type == "image") {
-////                            AsyncImage( // Coil
-////                                model = media.url,
-////                                contentDescription = null,
-////                                modifier = Modifier.fillMaxSize()
-////                            )
-//                        } else if (media.type == "video") {
-//                            Box(
-//                                Modifier.fillMaxSize(),
-//                                contentAlignment = Alignment.Center
-//                            ) {
-//                                Icon(
-//                                    imageVector = Icons.Default.PlayArrow,
-//                                    contentDescription = "Video",
-//                                    tint = Color.White
-//                                )
-//                            }
-//                        }
-//                    }
-//                }
-//            }
-
+            // TODO: show preview thumbnails
             // Score and Outcome row
-            Row(horizontalArrangement = Arrangement.spacedBy(Dimens.Space12)) {
-                OutlinedTextField(
-                    value = score,
-                    onValueChange = {
-                        score = it
-                        viewModel.updateScore(it)
-                    },
-                    label = { Text("Score") },
-                    placeholder = { Text("0-100") },
-                    singleLine = true,
-                    colors = tfColors,
-                    modifier = Modifier.weight(1f)
-                )
-
-                OutlinedTextField(
-                    value = outcome,
-                    onValueChange = {
-                        outcome = it
-                        viewModel.updateOutcome(it)
-                    },
-                    label = { Text("Outcome") },
-                    placeholder = { Text("Result") },
-                    singleLine = true,
-                    colors = tfColors,
-                    modifier = Modifier.weight(1f)
-                )
-            }
+            OutlinedTextField(
+                value = score,
+                onValueChange = {
+                    score = it
+                    viewModel.updateScore(it)
+                },
+                label = { Text("Score") },
+                placeholder = { Text("0-100") },
+                singleLine = true,
+                colors = tfColors,
+                modifier = Modifier.fillMaxWidth()
+            )
 
             // Inspection Type Dropdown
             var menuExpanded by remember { mutableStateOf(false) }
@@ -263,7 +218,8 @@ fun InspectorNewReportScreen(navController: NavController) {
 
                 ExposedDropdownMenu(
                     expanded = menuExpanded,
-                    onDismissRequest = { menuExpanded = false }
+                    onDismissRequest = { menuExpanded = false },
+                    modifier = Modifier.exposedDropdownSize(true)
                 ) {
                     inspectionOptions.forEach { option ->
                         DropdownMenuItem(
@@ -283,25 +239,14 @@ fun InspectorNewReportScreen(navController: NavController) {
             Text("Status", style = MaterialTheme.typography.titleSmall, color = OffWhite)
 
             Column(verticalArrangement = Arrangement.spacedBy(Dimens.Space8)) {
-                Row(horizontalArrangement = Arrangement.spacedBy(Dimens.Space8)) {
-                    StatusChip("Passed", status == "Passed") {
-                        status = "Passed"
-                        viewModel.updateStatus("Passed")
-                    }
-                    StatusChip("Failed", status == "Failed") {
-                        status = "Failed"
-                        viewModel.updateStatus("Failed")
-                    }
-                }
-
-                Row(horizontalArrangement = Arrangement.spacedBy(Dimens.Space8)) {
-                    StatusChip("Pending", status == "Pending") {
-                        status = "Pending"
-                        viewModel.updateStatus("Pending")
-                    }
-                    StatusChip("Needs Attention", status == "Needs Attention") {
-                        status = "Needs Attention"
-                        viewModel.updateStatus("Needs Attention")
+                statusOptions.chunked(2).forEach { rowItems ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(Dimens.Space8)) {
+                        rowItems.forEach { item ->
+                            StatusChip(item, status == item) {
+                                status = item
+                                viewModel.updateStatus(item)
+                            }
+                        }
                     }
                 }
             }
@@ -313,7 +258,7 @@ fun InspectorNewReportScreen(navController: NavController) {
             ) {
                 Button(
                     onClick = { viewModel.saveAsDraft() },
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.weight(1f).height(Dimens.ButtonHeight),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = SafetyYellow,
                         contentColor = Color.Black
@@ -333,7 +278,7 @@ fun InspectorNewReportScreen(navController: NavController) {
 
                 Button(
                     onClick = { viewModel.submitReport() },
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.weight(1f).height(Dimens.ButtonHeight),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = SurfaceDarkHigh,
                         contentColor = OffWhite
@@ -374,8 +319,8 @@ private fun StatusChip(
     val color = when (item) {
         "Passed" -> StatusGreen
         "Failed" -> SafetyRed
-        "Pending" -> StatusOrange
-        else -> StatusOrange // "Needs Attention"
+        "Needs Attention" -> StatusOrange
+        else -> StatusOrange
     }
 
     FilterChip(
@@ -392,3 +337,6 @@ private fun StatusChip(
         border = if (!selected) BorderStroke(1.dp, color) else null
     )
 }
+
+fun String.capitalizeWords(): String =
+    split(" ").joinToString(" ") { it.replaceFirstChar { char -> char.uppercase() } }
