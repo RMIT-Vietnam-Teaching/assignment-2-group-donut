@@ -17,5 +17,5 @@ sealed class AuthState {
     data class CodeSent(val verificationId: String) : AuthState()
     data class Error(val message: String?) : AuthState()
     object Loading : AuthState()
-    object CodeTimeout : AuthState() // <= thêm
+    object CodeTimeout : AuthState()
 }

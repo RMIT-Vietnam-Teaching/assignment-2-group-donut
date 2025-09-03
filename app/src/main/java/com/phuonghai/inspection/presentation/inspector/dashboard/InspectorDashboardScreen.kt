@@ -74,7 +74,7 @@ fun InspectorInfoCard(user: User?) {
 
                 InfoRow(
                     label = "ID Inspector:",
-                    value = "INSP-${user?.uid?.take(6)?.uppercase() ?: "000000"}",
+                    value = "INSP-${user?.uId?.take(6)?.uppercase() ?: "000000"}",
                     icon = Icons.Default.Numbers
                 )
 
@@ -101,10 +101,10 @@ fun InspectorInfoCard(user: User?) {
                     valueColor = MaterialTheme.colorScheme.primary
                 )
 
-                if (!user?.supervisorPhone.isNullOrBlank()) {
+                if (!user?.supervisorId.isNullOrBlank()) {
                     InfoRow(
                         label = "Supervisor:",
-                        value = user?.supervisorPhone ?: "",
+                        value = user?.supervisorId ?: "",
                         icon = Icons.Default.SupervisorAccount
                     )
                 }

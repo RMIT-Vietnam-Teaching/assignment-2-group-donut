@@ -3,7 +3,10 @@ package com.phuonghai.inspection.presentation.home.inspector.report
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.firebase.Timestamp
+import com.phuonghai.inspection.domain.model.*
 import com.phuonghai.inspection.domain.repository.IAuthRepository
+import com.phuonghai.inspection.domain.repository.IReportRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -13,7 +16,8 @@ import javax.inject.Inject
 
 @HiltViewModel
 class NewReportViewModel @Inject constructor(
-    private val authRepository: IAuthRepository
+    private val authRepository: IAuthRepository,
+    private val reportRepository: IReportRepository
 ) : ViewModel() {
 
     companion object {
@@ -32,8 +36,9 @@ class NewReportViewModel @Inject constructor(
 
                 _uiState.value = _uiState.value.copy(
                     inspectorName = currentUser?.fullName ?: "Unknown Inspector",
-                    inspectorId = "INSP-${currentUser?.uid?.take(5) ?: "00000"}",
-                    unreadNotifications = 4 // Sample data
+                    inspectorId = "INSP-${currentUser?.uId?.take(5) ?: "00000"}",
+                    currentUserId = currentUser?.uId ?: "",
+                    unreadNotifications = 4
                 )
 
                 Log.d(TAG, "Inspector info loaded: ${currentUser?.fullName}")
@@ -46,6 +51,7 @@ class NewReportViewModel @Inject constructor(
         }
     }
 
+    // Các update methods
     fun updateTitle(title: String) {
         _uiState.value = _uiState.value.copy(title = title)
     }
@@ -70,6 +76,53 @@ class NewReportViewModel @Inject constructor(
         _uiState.value = _uiState.value.copy(inspectionType = type)
     }
 
+    // ✅ Method chính để tạo report
+    fun submitReport() {
+        Log.d(TAG, "Submitting report")
+
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(
+                isLoading = true,
+                actionType = "submit"
+            )
+
+            try {
+                val assignStatus = when (_uiState.value.status) {
+                    "Passed" -> AssignStatus.PASSED
+                    "Failed" -> AssignStatus.FAILED
+                    "Needs Attention" -> AssignStatus.NEEDS_ATTENTION
+                    else -> AssignStatus.PENDING_REVIEW
+                }
+
+                val report = createReportFromUiState(assignStatus)
+                val result = reportRepository.createReport(report)
+
+                if (result.isSuccess) {
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        actionType = null,
+                        message = "Report submitted successfully"
+                    )
+                    clearForm()
+                    Log.d(TAG, "Report submitted successfully: ${result.getOrNull()}")
+                } else {
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        actionType = null,
+                        message = "Failed to submit report: ${result.exceptionOrNull()?.message}"
+                    )
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error submitting report", e)
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    actionType = null,
+                    message = "Error submitting report: ${e.message}"
+                )
+            }
+        }
+    }
+
     fun saveAsDraft() {
         Log.d(TAG, "Saving report as draft")
 
@@ -80,16 +133,24 @@ class NewReportViewModel @Inject constructor(
             )
 
             try {
-                // TODO: Implement save as draft logic
-                kotlinx.coroutines.delay(1500) // Simulate API call
+                val report = createReportFromUiState(AssignStatus.DRAFT)
+                val result = reportRepository.createReport(report)
 
-                _uiState.value = _uiState.value.copy(
-                    isLoading = false,
-                    actionType = null,
-                    message = "Report saved as draft successfully"
-                )
-
-                Log.d(TAG, "Report saved as draft successfully")
+                if (result.isSuccess) {
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        actionType = null,
+                        message = "Report saved as draft successfully"
+                    )
+                    clearForm()
+                    Log.d(TAG, "Report saved as draft successfully: ${result.getOrNull()}")
+                } else {
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        actionType = null,
+                        message = "Failed to save draft: ${result.exceptionOrNull()?.message}"
+                    )
+                }
             } catch (e: Exception) {
                 Log.e(TAG, "Error saving draft", e)
                 _uiState.value = _uiState.value.copy(
@@ -101,38 +162,27 @@ class NewReportViewModel @Inject constructor(
         }
     }
 
-    fun submitReport() {
-        Log.d(TAG, "Submitting report")
+    // ✅ Method để tạo Report object từ UI state
+    private fun createReportFromUiState(assignStatus: AssignStatus): Report {
+        val state = _uiState.value
 
-        viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(
-                isLoading = true,
-                actionType = "submit"
-            )
-
-            try {
-                // TODO: Implement submit report logic
-                kotlinx.coroutines.delay(2000) // Simulate API call
-
-                _uiState.value = _uiState.value.copy(
-                    isLoading = false,
-                    actionType = null,
-                    message = "Report submitted successfully"
-                )
-
-                // Clear form after successful submission
-                clearForm()
-
-                Log.d(TAG, "Report submitted successfully")
-            } catch (e: Exception) {
-                Log.e(TAG, "Error submitting report", e)
-                _uiState.value = _uiState.value.copy(
-                    isLoading = false,
-                    actionType = null,
-                    message = "Error submitting report: ${e.message}"
-                )
-            }
-        }
+        return Report(
+            inspectorId = state.currentUserId,
+            title = state.title,
+            description = state.notes,
+            type = when (state.inspectionType.uppercase()) {
+                "FIRE SAFETY" -> InspectionType.FIRE_SAFETY
+                "FOOD HYGIENE" -> InspectionType.FOOD_HYGIENE
+                else -> InspectionType.valueOf(state.inspectionType.uppercase())
+            },
+            score = state.score.toIntOrNull(),
+            priority = Priority.NORMAL,
+            assignStatus = assignStatus,
+            responseStatus = ResponseStatus.PENDING,
+            syncStatus = SyncStatus.UNSYNCED,
+            createdAt = Timestamp.now(),
+            completedAt = if (assignStatus != AssignStatus.DRAFT) Timestamp.now() else null
+        )
     }
 
     fun clearMessage() {
@@ -162,6 +212,7 @@ data class NewReportUiState(
     val isLoading: Boolean = false,
     val inspectorName: String = "",
     val inspectorId: String = "",
+    val currentUserId: String = "",
     val unreadNotifications: Int = 0,
     val title: String = "",
     val notes: String = "",
@@ -169,8 +220,10 @@ data class NewReportUiState(
     val outcome: String = "",
     val status: String = "Passed",
     val inspectionType: String = "Electrical",
-    val actionType: String? = null, // "save" or "submit"
+    val actionType: String? = null,
     val message: String? = null
 ) {
-    val canSubmit: Boolean get() = title.isNotBlank() && notes.isNotBlank() && score.isNotBlank()
+    val canSubmit: Boolean get() = title.isNotBlank() &&
+            notes.isNotBlank() &&
+            score.isNotBlank()
 }
