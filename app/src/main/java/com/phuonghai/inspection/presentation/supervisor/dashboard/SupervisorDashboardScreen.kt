@@ -1,6 +1,5 @@
 package com.phuonghai.inspection.presentation.home.supervisor
 
-import android.content.res.Resources
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -163,7 +162,7 @@ fun SupervisorWelcomeSection(
         )
         Text(
             teamStats?.getStatusSummary() ?: "Đang tải thông tin team...",
-            fontSize = 16.sp,
+            fontSize = 17.sp,
             color = Color.LightGray,
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(bottom = 16.dp)
@@ -215,7 +214,7 @@ fun PendingReviewsSection(
     ) {
         Text(
             "Báo cáo cần duyệt",
-            fontSize = 20.sp,
+            fontSize = 24.sp,
             fontWeight = FontWeight.Bold,
             color = Color.White,
             modifier = Modifier.padding(bottom = 8.dp)
@@ -258,7 +257,8 @@ fun PendingReportCard(
             Text(
                 text = report.title,
                 fontWeight = FontWeight.Bold,
-                color = Color.White
+                color = Color.White,
+                fontSize = 18.sp
             )
             Spacer(Modifier.height(4.dp))
 
@@ -266,15 +266,17 @@ fun PendingReportCard(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Column {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
                     Text(
                         text = "Bởi: ${report.inspectorName}",
-                        fontSize = 12.sp,
+                        fontSize = 17.sp,
                         color = Color.LightGray
                     )
                     Text(
                         text = report.submittedAt,
-                        fontSize = 12.sp,
+                        fontSize = 16.sp,
                         color = Color.Gray
                     )
                 }
@@ -288,7 +290,7 @@ fun PendingReportCard(
                             imageVector = Icons.Default.Check,
                             contentDescription = "Duyệt",
                             tint = Color(0xFF4CAF50),
-                            modifier = Modifier.size(20.dp)
+                            modifier = Modifier.size(24.dp)
                         )
                     }
 
@@ -300,7 +302,7 @@ fun PendingReportCard(
                             imageVector = Icons.Default.Close,
                             contentDescription = "Từ chối",
                             tint = Color(0xFFE53935),
-                            modifier = Modifier.size(20.dp)
+                            modifier = Modifier.size(24.dp)
                         )
                     }
                 }

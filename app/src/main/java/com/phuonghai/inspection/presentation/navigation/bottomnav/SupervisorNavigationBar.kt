@@ -16,8 +16,12 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.donut.assignment2.presentation.supervisor.history.SupervisorHistoryScreen
 import com.donut.assignment2.presentation.supervisor.map.SupervisorMapScreen
+import com.donut.assignment2.presentation.supervisor.profile.SupervisorProfileScreen
 import com.phuonghai.inspection.presentation.home.supervisor.SupervisorDashboard
+import com.phuonghai.inspection.presentation.navigation.Screen
+import com.phuonghai.inspection.presentation.supervisor.task.SupervisorTaskScreen
 
 enum class SupervisorDestination(
     val route: String,
@@ -26,10 +30,11 @@ enum class SupervisorDestination(
     val selectedIcon: ImageVector,
     val contentDescription: String
 ) {
-    DASHBOARD("supervisor_dashboard", "Dashboard", Icons.Outlined.Home, Icons.Filled.Home, "Dashboard"),
-    HISTORY("supervisor_history", "History", Icons.Outlined.History, Icons.Filled.History, "History"),
-    MAP("supervisor_map","map", Icons.Outlined.Map, Icons.Filled.Map,"Map"),
-    PROFILE("supervisor_profile", "Profile", Icons.Outlined.Person, Icons.Filled.Person, "Profile")
+    DASHBOARD(Screen.SupervisorDashboard.route, "Dashboard", Icons.Outlined.Home, Icons.Filled.Home, "Dashboard"),
+    TASK(Screen.SupervisorTaskScreen.route, "Task", Icons.Outlined.Task, Icons.Filled.Task, "Task"),
+    HISTORY(Screen.SupervisorHistoryScreen.route, "History", Icons.Outlined.History, Icons.Filled.History, "History"),
+    MAP(Screen.SupervisorMapScreen.route,"Map", Icons.Outlined.Map, Icons.Filled.Map,"Map"),
+    PROFILE(Screen.SupervisorProfileScreen.route, "Profile", Icons.Outlined.Person, Icons.Filled.Person, "Profile")
 }
 
 @Composable
@@ -46,9 +51,10 @@ fun SupervisorNavHost(
             composable(destination.route) {
                 when (destination) {
                     SupervisorDestination.DASHBOARD -> SupervisorDashboard()
-                    SupervisorDestination.HISTORY -> SupervisorHistoryScreen()
-                    SupervisorDestination.MAP -> SupervisorMapScreen()
-                    SupervisorDestination.PROFILE -> SupervisorProfileScreen()
+                    SupervisorDestination.TASK -> SupervisorTaskScreen()
+                    SupervisorDestination.HISTORY -> SupervisorHistoryScreen(navController = navController)
+                    SupervisorDestination.MAP -> SupervisorMapScreen(navController = navController)
+                    SupervisorDestination.PROFILE -> SupervisorProfileScreen(navController = navController)
                 }
             }
         }
@@ -97,34 +103,3 @@ fun SupervisorNavigationBar(modifier: Modifier = Modifier) {
     }
 }
 
-@Composable
-fun SupervisorHistoryScreen() {
-    // Placeholder screen
-    androidx.compose.foundation.layout.Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = androidx.compose.ui.Alignment.Center
-    ) {
-        Text("Supervisor History Screen")
-    }
-}
-
-@Composable
-fun SupervisorProfileScreen() {
-    // Placeholder screen
-    androidx.compose.foundation.layout.Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = androidx.compose.ui.Alignment.Center
-    ) {
-        Text("Supervisor Profile Screen")
-    }
-}
-@Composable
-fun SupervisorMapScreen() {
-    // Placeholder screen
-    androidx.compose.foundation.layout.Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = androidx.compose.ui.Alignment.Center
-    ) {
-        Text("Supervisor Map Screen")
-    }
-}

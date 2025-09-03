@@ -1,7 +1,8 @@
-package com.donut.assignment2.presentation.supervisor.history
+package com.donut.assignment2.presentation.inspector.history
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -10,6 +11,7 @@ import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Assignment
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -42,7 +44,8 @@ data class FakeReport(
     val supervisorName: String,
     val inspectorName: String,
     val time: Long,
-    val hasNote: Boolean = false
+    val hasNote: Boolean = false,
+    val isSync: Boolean = true
 )
 
 data class FakeDashboard(
@@ -70,7 +73,8 @@ val reports = listOf(
         time = System.currentTimeMillis() - 1000 * 60 * 60, // 1h ago
         assignStatus = FakeAssignStatus.PENDING_REVIEW,
         supervisorResponse = FakeSupervisorResponse.NONE,
-        hasNote = true
+        hasNote = true,
+        isSync = false
     ),
     FakeReport(
         id = "R002",
@@ -79,7 +83,9 @@ val reports = listOf(
         inspectorName = "Inspector B",
         time = System.currentTimeMillis() - 1000 * 60 * 60 * 24, // 1 day ago
         assignStatus = FakeAssignStatus.PASSED,
-        supervisorResponse = FakeSupervisorResponse.APPROVED
+        supervisorResponse = FakeSupervisorResponse.APPROVED,
+        hasNote = false,
+        isSync = true
     ),
     FakeReport(
         id = "R003",
@@ -88,7 +94,8 @@ val reports = listOf(
         inspectorName = "Inspector C",
         time = System.currentTimeMillis() - 1000 * 60 * 60 * 48, // 2 days ago
         assignStatus = FakeAssignStatus.PENDING_REVIEW,
-        supervisorResponse = FakeSupervisorResponse.NONE
+        supervisorResponse = FakeSupervisorResponse.NONE,
+        isSync = true
     ),
     FakeReport(
         id = "R004",
@@ -107,7 +114,8 @@ val reports = listOf(
         inspectorName = "Inspector E",
         time = System.currentTimeMillis() - 1000 * 60 * 60 * 5, // 5h ago
         assignStatus = FakeAssignStatus.FAILED,
-        supervisorResponse = FakeSupervisorResponse.REJECTED
+        supervisorResponse = FakeSupervisorResponse.REJECTED,
+        isSync = false
     ),
     FakeReport(
         id = "R006",
@@ -134,25 +142,27 @@ val reports = listOf(
         inspectorName = "Inspector H",
         time = System.currentTimeMillis() - 1000 * 60 * 60 * 120, // 5 days ago
         assignStatus = FakeAssignStatus.PASSED,
-        supervisorResponse = FakeSupervisorResponse.NONE
+        supervisorResponse = FakeSupervisorResponse.NONE,
+        isSync = false
     )
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SupervisorHistoryScreen(navController: NavController) {
+fun InspectorHistoryReportScreen(navController: NavController) {
     var searchQuery by remember { mutableStateOf("") }
 
     // Dropdown states
     var expandedTime by remember { mutableStateOf(false) }
     var expandedStatus by remember { mutableStateOf(false) }
     var expandedResponse by remember { mutableStateOf(false) }
+    var expendedSync by remember { mutableStateOf(false) }
 
     // Selected filters
     var selectedTimeFilter by remember { mutableStateOf("Most Recent") }
     var selectedStatusFilter by remember { mutableStateOf("All Status") }
     var selectedResponseFilter by remember { mutableStateOf("All Responses") }
-
+    var selectedSyncFilter by remember { mutableStateOf("All Sync Status") }
     Scaffold(
         topBar = {
             Column(
@@ -182,93 +192,134 @@ fun SupervisorHistoryScreen(navController: NavController) {
                 Spacer(modifier = Modifier.height(8.dp))
 
                 // 🎛 Filter dropdown chips
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    // Time filter
-                    Box {
-                        FilterChip(
-                            selected = expandedTime,
-                            onClick = { expandedTime = !expandedTime },
-                            label = { Text(selectedTimeFilter) },
-                            leadingIcon = { Icon(Icons.Default.AccessTime, null) },
-                            colors = FilterChipDefaults.filterChipColors(
-                                containerColor = Color(0xFF2C2C2C),
-                                selectedContainerColor = SafetyYellow,
-                                labelColor = Color.White,
-                                selectedLabelColor = Color.Black
-                            )
-                        )
-                        DropdownMenu(
-                            expanded = expandedTime,
-                            onDismissRequest = { expandedTime = false }
-                        ) {
-                            listOf("Most Recent", "Oldest", "Today", "This Week").forEach { option ->
-                                DropdownMenuItem(
-                                    text = { Text(option) },
-                                    onClick = {
-                                        selectedTimeFilter = option
-                                        expandedTime = false
-                                    }
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly
+                    ){
+                        // Time filter
+                        Box {
+                            FilterChip(
+                                selected = expandedTime,
+                                onClick = { expandedTime = !expandedTime },
+                                label = { Text(selectedTimeFilter) },
+                                leadingIcon = { Icon(Icons.Default.AccessTime, null) },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    containerColor = Color(0xFF2C2C2C),
+                                    selectedContainerColor = SafetyYellow,
+                                    labelColor = Color.White,
+                                    selectedLabelColor = Color.Black
                                 )
+                            )
+                            DropdownMenu(
+                                expanded = expandedTime,
+                                onDismissRequest = { expandedTime = false }
+                            ) {
+                                listOf("Most Recent", "Oldest", "Today", "This Week").forEach { option ->
+                                    DropdownMenuItem(
+                                        text = { Text(option) },
+                                        onClick = {
+                                            selectedTimeFilter = option
+                                            expandedTime = false
+                                        }
+                                    )
+                                }
+                            }
+                        }
+
+                        // Status filter
+                        Box {
+                            FilterChip(
+                                selected = expandedStatus,
+                                onClick = { expandedStatus = !expandedStatus },
+                                label = { Text(selectedStatusFilter) },
+                                leadingIcon = { Icon(Icons.Default.Assignment, null) },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    containerColor = Color(0xFF2C2C2C),
+                                    selectedContainerColor = SafetyYellow,
+                                    labelColor = Color.White,
+                                    selectedLabelColor = Color.Black
+                                )
+                            )
+                            DropdownMenu(
+                                expanded = expandedStatus,
+                                onDismissRequest = { expandedStatus = false }
+                            ) {
+                                listOf("All Status", "Pending Review", "Passed", "Failed", "Needs Attention").forEach { option ->
+                                    DropdownMenuItem(
+                                        text = { Text(option) },
+                                        onClick = {
+                                            selectedStatusFilter = option
+                                            expandedStatus = false
+                                        }
+                                    )
+                                }
                             }
                         }
                     }
-
-                    // Status filter
-                    Box {
-                        FilterChip(
-                            selected = expandedStatus,
-                            onClick = { expandedStatus = !expandedStatus },
-                            label = { Text(selectedStatusFilter) },
-                            leadingIcon = { Icon(Icons.Default.Assignment, null) },
-                            colors = FilterChipDefaults.filterChipColors(
-                                containerColor = Color(0xFF2C2C2C),
-                                selectedContainerColor = SafetyYellow,
-                                labelColor = Color.White,
-                                selectedLabelColor = Color.Black
-                            )
-                        )
-                        DropdownMenu(
-                            expanded = expandedStatus,
-                            onDismissRequest = { expandedStatus = false }
-                        ) {
-                            listOf("All Status", "Pending Review", "Passed", "Failed", "Needs Attention").forEach { option ->
-                                DropdownMenuItem(
-                                    text = { Text(option) },
-                                    onClick = {
-                                        selectedStatusFilter = option
-                                        expandedStatus = false
-                                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly
+                    ){
+                        // Response filter
+                        Box {
+                            FilterChip(
+                                selected = expandedResponse,
+                                onClick = { expandedResponse = !expandedResponse },
+                                label = { Text(selectedResponseFilter) },
+                                leadingIcon = { Icon(Icons.Default.Check, null) },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    containerColor = Color(0xFF2C2C2C),
+                                    selectedContainerColor = SafetyYellow,
+                                    labelColor = Color.White,
+                                    selectedLabelColor = Color.Black
                                 )
+                            )
+                            DropdownMenu(
+                                expanded = expandedResponse,
+                                onDismissRequest = { expandedResponse = false }
+                            ) {
+                                listOf("All Responses", "Approved", "Rejected").forEach { option ->
+                                    DropdownMenuItem(
+                                        text = { Text(option) },
+                                        onClick = {
+                                            selectedResponseFilter = option
+                                            expandedResponse = false
+                                        }
+                                    )
+                                }
                             }
                         }
-                    }
-
-                    // Response filter
-                    Box {
-                        FilterChip(
-                            selected = expandedResponse,
-                            onClick = { expandedResponse = !expandedResponse },
-                            label = { Text(selectedResponseFilter) },
-                            leadingIcon = { Icon(Icons.Default.Check, null) },
-                            colors = FilterChipDefaults.filterChipColors(
-                                containerColor = Color(0xFF2C2C2C),
-                                selectedContainerColor = SafetyYellow,
-                                labelColor = Color.White,
-                                selectedLabelColor = Color.Black
-                            )
-                        )
-                        DropdownMenu(
-                            expanded = expandedResponse,
-                            onDismissRequest = { expandedResponse = false }
-                        ) {
-                            listOf("All Responses", "Approved", "Rejected").forEach { option ->
-                                DropdownMenuItem(
-                                    text = { Text(option) },
-                                    onClick = {
-                                        selectedResponseFilter = option
-                                        expandedResponse = false
-                                    }
+                        // Response filter
+                        Box {
+                            FilterChip(
+                                selected = expendedSync,
+                                onClick = { expendedSync = !expendedSync },
+                                label = { Text(selectedSyncFilter) },
+                                leadingIcon = { Icon(Icons.Default.Sync, null) },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    containerColor = Color(0xFF2C2C2C),
+                                    selectedContainerColor = SafetyYellow,
+                                    labelColor = Color.White,
+                                    selectedLabelColor = Color.Black
                                 )
+                            )
+                            DropdownMenu(
+                                expanded = expendedSync,
+                                onDismissRequest = { expendedSync = false }
+                            ) {
+                                listOf("All Sync Status","Synced", "UnSynced").forEach { option ->
+                                    DropdownMenuItem(
+                                        text = { Text(option) },
+                                        onClick = {
+                                            selectedSyncFilter = option
+                                            expendedSync = false
+                                        }
+                                    )
+                                }
                             }
                         }
                     }
@@ -324,13 +375,33 @@ fun SupervisorHistoryReportCard(report: FakeReport) {
             }
 
             // 🎯 Response Tag: This is now a direct child of the Box and can be aligned
+            // 🎯 Response Tag with dynamic color
+            val responseColor = when (report.supervisorResponse.toString()) {
+                "APPROVED" -> Color(0xFF4CAF50) // Green 500
+                "REJECTED" -> Color(0xFFF44336) // Red 500
+                "NONE" -> SafetyYellow
+                else -> SafetyYellow // fallback
+            }
+
             Text(
-                text = report.supervisorResponse.toString(), // Convert enum to string
+                text = report.supervisorResponse.toString(),
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color.Black,
                 modifier = Modifier
-                    .align(Alignment.TopEnd) // This is now a direct child of Box
+                    .align(Alignment.TopEnd)
+                    .padding(8.dp)
+                    .background(responseColor, shape = RoundedCornerShape(8.dp))
+                    .padding(horizontal = 10.dp, vertical = 4.dp)
+            )
+            // 🎯 Response Tag: This is now a direct child of the Box and can be aligned
+            Text(
+                text = if (report.isSync) "Synced" else "UnSynced", // Convert enum to string
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.Black,
+                modifier = Modifier
+                    .align(Alignment.BottomEnd) // This is now a direct child of Box
                     .padding(8.dp)
                     .background(SafetyYellow, shape = RoundedCornerShape(8.dp))
                     .padding(horizontal = 10.dp, vertical = 4.dp)

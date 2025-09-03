@@ -3,7 +3,6 @@ package com.phuonghai.inspection.presentation.home.inspector
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -18,13 +17,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.phuonghai.inspection.domain.model.User
 import com.phuonghai.inspection.presentation.theme.*
-import java.text.SimpleDateFormat
-import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun InspectorInfoCard(user: com.phuonghai.inspection.domain.model.User?) {
+fun InspectorInfoCard(user: User?) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -52,7 +50,7 @@ fun InspectorInfoCard(user: com.phuonghai.inspection.domain.model.User?) {
                     modifier = Modifier.size(28.dp)
                 )
                 Text(
-                    text = "Inspector info",
+                    text = "Thông tin Inspector",
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
@@ -69,9 +67,9 @@ fun InspectorInfoCard(user: com.phuonghai.inspection.domain.model.User?) {
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 InfoRow(
-                    label = "fullName:",
+                    label = "Họ và tên:",
                     value = user?.fullName ?: "Chưa cập nhật",
-                    icon = Icons.Default.Badge
+                    icon = Icons.Default.Badge,
                 )
 
                 InfoRow(
@@ -95,8 +93,8 @@ fun InspectorInfoCard(user: com.phuonghai.inspection.domain.model.User?) {
                 InfoRow(
                     label = "Vai trò:",
                     value = when(user?.role?.name) {
-                        "INSPECTOR" -> "INSPECTOR"
-                        "SUPERVISOR" -> "SUPERVISOR"
+                        "INSPECTOR" -> "Nhân viên kiểm tra"
+                        "SUPERVISOR" -> "Giám sát viên"
                         else -> "Chưa xác định"
                     },
                     icon = Icons.Default.Work,
@@ -107,7 +105,7 @@ fun InspectorInfoCard(user: com.phuonghai.inspection.domain.model.User?) {
                     InfoRow(
                         label = "Supervisor:",
                         value = user?.supervisorPhone ?: "",
-                        icon = Icons.Default.ManageAccounts
+                        icon = Icons.Default.SupervisorAccount
                     )
                 }
             }
@@ -131,7 +129,7 @@ fun InspectorInfoCard(user: com.phuonghai.inspection.domain.model.User?) {
                             )
                     )
                     Text(
-                        text = "Online",
+                        text = "Đang hoạt động",
                         fontSize = 14.sp,
                         color = StatusGreen,
                         fontWeight = FontWeight.Medium
@@ -139,8 +137,8 @@ fun InspectorInfoCard(user: com.phuonghai.inspection.domain.model.User?) {
                 }
 
                 Text(
-                    text = "updated: ${getCurrentDateTime()}",
-                    fontSize = 12.sp,
+                    text = "Cập nhật: ${getCurrentDateTime()}",
+                    fontSize = 14.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
@@ -174,7 +172,7 @@ private fun InfoRow(
         ) {
             Text(
                 text = label,
-                fontSize = 14.sp,
+                fontSize = 15.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontWeight = FontWeight.Medium,
                 modifier = Modifier.weight(0.4f)
@@ -182,7 +180,7 @@ private fun InfoRow(
 
             Text(
                 text = value,
-                fontSize = 14.sp,
+                fontSize = 15.sp,
                 color = valueColor,
                 fontWeight = FontWeight.Normal,
                 modifier = Modifier.weight(0.6f),
@@ -299,7 +297,9 @@ fun DashboardContent(
             modifier = Modifier
                 .fillMaxSize()
                 .background(MaterialTheme.colorScheme.background)
-                .padding(16.dp),
+                .padding(horizontal = 16.dp)
+                .padding(bottom = 100.dp)
+                .padding(top = 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
@@ -313,32 +313,6 @@ fun DashboardContent(
 
             item {
                 RecentReportsSection(recentReports)
-            }
-
-            item {
-                Button(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp),
-                    onClick = onCreateReportClick,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary
-                    ),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Add,
-                        contentDescription = "Tạo báo cáo mới",
-                        tint = MaterialTheme.colorScheme.onPrimary
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        "Tạo báo cáo mới",
-                        color = MaterialTheme.colorScheme.onPrimary,
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
             }
         }
     }
@@ -382,7 +356,7 @@ fun SummarySection(
                 ReportCountCard(
                     "Đã\nduyệt",
                     statistics.approvedReports,
-                    StatusGreen,
+                    StatusGreen, // ✅ Using your StatusGreen
                     modifier = Modifier.weight(1f)
                 )
                 ReportCountCard(
@@ -445,7 +419,7 @@ fun ReportCountCard(
             )
             Text(
                 text = label,
-                fontSize = 14.sp,
+                fontSize = 16.sp,
                 color = MaterialTheme.colorScheme.onSurface,
                 textAlign = TextAlign.Center,
                 lineHeight = 16.sp

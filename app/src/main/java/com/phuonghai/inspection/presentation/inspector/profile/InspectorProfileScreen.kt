@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.phuonghai.inspection.R
+import com.phuonghai.inspection.presentation.generalUI.ButtonUI
 import com.phuonghai.inspection.presentation.home.inspector.profile.InspectorProfileViewModel
 
 @Composable
@@ -138,19 +139,18 @@ fun InspectorProfileScreen(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceEvenly,
                         verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        ProfileButton(
+                    ){
+                        ButtonUI(
                             text = "Logout",
-                            onClick = { viewModel.logout() },
+                            onClick = {},
                             icon = Icons.AutoMirrored.Outlined.Logout,
-                            backgroundColor = Color(0xFFFFD700)
+                            modifier = Modifier.clip(RoundedCornerShape(50.dp))
                         )
-
-                        ProfileButton(
-                            text = "Chat Box",
+                        ButtonUI(
+                            text="Chat Box",
                             onClick = { isChatBoxOpen = true },
                             icon = Icons.Outlined.Chat,
-                            backgroundColor = Color(0xFF2196F3)
+                            modifier = Modifier.clip(RoundedCornerShape(50.dp))
                         )
                     }
                 }
@@ -169,37 +169,6 @@ fun InspectorProfileScreen(
                 }
             }
         }
-    }
-}
-
-@Composable
-fun ProfileButton(
-    text: String,
-    onClick: () -> Unit,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    backgroundColor: Color
-) {
-    Button(
-        onClick = onClick,
-        colors = ButtonDefaults.buttonColors(containerColor = backgroundColor),
-        shape = RoundedCornerShape(50.dp),
-        modifier = Modifier
-            .height(48.dp)
-            .width(120.dp)
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = text,
-            tint = Color.Black,
-            modifier = Modifier.size(20.dp)
-        )
-        Spacer(modifier = Modifier.width(4.dp))
-        Text(
-            text = text,
-            color = Color.Black,
-            fontWeight = FontWeight.Bold,
-            fontSize = 12.sp
-        )
     }
 }
 

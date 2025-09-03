@@ -16,9 +16,12 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.donut.assignment2.presentation.inspector.history.InspectorHistoryReportScreen
 import com.phuonghai.inspection.presentation.home.inspector.InspectorDashboard
 import com.phuonghai.inspection.presentation.home.inspector.InspectorNewReportScreen
 import com.phuonghai.inspection.presentation.home.inspector.InspectorNotificationScreen
+import com.phuonghai.inspection.presentation.home.inspector.InspectorProfileScreen
+import com.phuonghai.inspection.presentation.inspector.task.InspectorTaskScreen
 import com.phuonghai.inspection.presentation.navigation.Screen
 
 enum class InspectorDestination(
@@ -28,10 +31,11 @@ enum class InspectorDestination(
     val selectedIcon: ImageVector,
     val contentDescription: String
 ) {
-    DASHBOARD("inspector_dashboard", "Dashboard", Icons.Outlined.Home, Icons.Filled.Home, "Dashboard"),
-    REPORTS("inspector_reports", "New Report", Icons.Outlined.Description, Icons.Filled.Description, "New Report"),
-    NOTIFICATIONS("inspector_notifications", "Notifications", Icons.Outlined.Notifications, Icons.Filled.Notifications, "Notifications"),
-    PROFILE("inspector_profile", "Profile", Icons.Outlined.Person, Icons.Filled.Person, "Profile")
+    DASHBOARD(Screen.InspectorDashboard.route, "Dashboard", Icons.Outlined.Home, Icons.Filled.Home, "Dashboard"),
+    Task(Screen.InspectorTaskScreen.route, "Task", Icons.Outlined.Task, Icons.Filled.Task, "Task"),
+    HISTORY(Screen.InspectorHistoryScreen.route, "History", Icons.Outlined.History, Icons.Filled.History, "History"),
+    NOTIFICATIONS(Screen.InspectorNotificationScreen.route, "Notifications", Icons.Outlined.Notifications, Icons.Filled.Notifications, "Notifications"),
+    PROFILE(Screen.InspectorProfileScreen.route, "Profile", Icons.Outlined.Person, Icons.Filled.Person, "Profile")
 }
 
 @Composable
@@ -48,11 +52,16 @@ fun InspectorNavHost(
             composable(destination.route) {
                 when (destination) {
                     InspectorDestination.DASHBOARD -> InspectorDashboard()
-                    InspectorDestination.REPORTS -> InspectorNewReportScreen()
+                    InspectorDestination.Task -> InspectorTaskScreen(navController = navController)
+                    InspectorDestination.HISTORY -> InspectorHistoryReportScreen(navController = navController)
                     InspectorDestination.NOTIFICATIONS -> InspectorNotificationScreen()
                     InspectorDestination.PROFILE -> InspectorProfileScreen()
                 }
             }
+
+        }
+        composable(Screen.InspectorNewReportScreen.route) {
+            InspectorNewReportScreen(navController = navController)
         }
     }
 }
@@ -96,27 +105,5 @@ fun InspectorNavigationBar(modifier: Modifier = Modifier) {
             startDestination,
             modifier = Modifier.padding(contentPadding)
         )
-    }
-}
-
-@Composable
-fun InspectorNewReportScreen() {
-    // Placeholder screen
-    androidx.compose.foundation.layout.Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = androidx.compose.ui.Alignment.Center
-    ) {
-        Text("Inspector Reports Screen")
-    }
-}
-
-@Composable
-fun InspectorProfileScreen() {
-    // Placeholder screen
-    androidx.compose.foundation.layout.Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = androidx.compose.ui.Alignment.Center
-    ) {
-        Text("Inspector Profile Screen")
     }
 }

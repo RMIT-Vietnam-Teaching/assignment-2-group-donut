@@ -2,20 +2,24 @@ package com.phuonghai.inspection.presentation.home.inspector
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavController
 import com.phuonghai.inspection.presentation.home.inspector.report.NewReportViewModel
 import com.phuonghai.inspection.presentation.theme.*
 private object Dimens {
@@ -29,9 +33,8 @@ private object Dimens {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun InspectorNewReportScreen(
-    viewModel: NewReportViewModel = hiltViewModel()
-) {
+fun InspectorNewReportScreen(navController: NavController) {
+    var viewModel: NewReportViewModel = hiltViewModel()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     var title by remember { mutableStateOf("") }
@@ -90,6 +93,7 @@ fun InspectorNewReportScreen(
             Modifier
                 .padding(innerPadding)
                 .padding(Dimens.ScreenPadding)
+                .padding(bottom = 70.dp)
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(Dimens.Space12)
         ) {
@@ -142,6 +146,73 @@ fun InspectorNewReportScreen(
                 colors = tfColors,
                 modifier = Modifier.fillMaxWidth()
             )
+            // Media attachments section
+            Text("Attachments", style = MaterialTheme.typography.titleSmall, color = OffWhite)
+
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(Dimens.Space12),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                // Add Image button
+                OutlinedButton(
+                    onClick = { /* TODO: open image picker */ },
+                    border = BorderStroke(1.dp, SafetyYellow),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = SafetyYellow,
+                        containerColor = Color.Transparent
+                    ),
+                    modifier = Modifier.weight(1f).height(Dimens.ButtonHeight),
+                    shape = RoundedCornerShape(Dimens.Radius12)
+                ) {
+                    Text("Add Image")
+                }
+
+                // Add Video button
+                OutlinedButton(
+                    onClick = { /* TODO: open video picker */ },
+                    border = BorderStroke(1.dp, SafetyYellow),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = SafetyYellow,
+                        containerColor = Color.Transparent
+                    ),
+                    modifier = Modifier.weight(1f).height(Dimens.ButtonHeight),
+                    shape = RoundedCornerShape(Dimens.Radius12)
+                ) {
+                    Text("Add Video")
+                }
+            }
+
+//            // TODO: show preview thumbnails
+//            LazyRow(
+//                horizontalArrangement = Arrangement.spacedBy(8.dp),
+//                modifier = Modifier.fillMaxWidth()
+//            ) {
+//                items(uiState.mediaItems) { media ->
+//                    Card(
+//                        modifier = Modifier.size(100.dp),
+//                        shape = RoundedCornerShape(8.dp)
+//                    ) {
+//                        if (media.type == "image") {
+////                            AsyncImage( // Coil
+////                                model = media.url,
+////                                contentDescription = null,
+////                                modifier = Modifier.fillMaxSize()
+////                            )
+//                        } else if (media.type == "video") {
+//                            Box(
+//                                Modifier.fillMaxSize(),
+//                                contentAlignment = Alignment.Center
+//                            ) {
+//                                Icon(
+//                                    imageVector = Icons.Default.PlayArrow,
+//                                    contentDescription = "Video",
+//                                    tint = Color.White
+//                                )
+//                            }
+//                        }
+//                    }
+//                }
+//            }
 
             // Score and Outcome row
             Row(horizontalArrangement = Arrangement.spacedBy(Dimens.Space12)) {
@@ -234,8 +305,6 @@ fun InspectorNewReportScreen(
                     }
                 }
             }
-
-            Spacer(modifier = Modifier.height(Dimens.Space16))
 
             // Action buttons
             Row(

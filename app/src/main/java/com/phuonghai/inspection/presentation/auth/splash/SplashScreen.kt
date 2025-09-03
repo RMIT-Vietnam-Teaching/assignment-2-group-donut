@@ -12,6 +12,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.phuonghai.inspection.domain.model.UserRole
+import com.phuonghai.inspection.presentation.navigation.Screen
 
 @Composable
 fun SplashScreen(navController: NavController) {
@@ -24,13 +25,13 @@ fun SplashScreen(navController: NavController) {
         // Chỉ điều hướng khi đã kiểm tra xong (isLoading = false)
         if (!isLoading) {
             when (userRole) {
-                UserRole.INSPECTOR -> navController.navigate("inspector_dashboard") {
+                UserRole.INSPECTOR -> navController.navigate(Screen.InspectorDashboard.route) {
                     popUpTo("splash_screen") { inclusive = true }
                 }
-                UserRole.SUPERVISOR -> navController.navigate("supervisor_dashboard") {
+                UserRole.SUPERVISOR -> navController.navigate(Screen.SupervisorDashboard.route) {
                     popUpTo("splash_screen") { inclusive = true }
                 }
-                null -> navController.navigate("login_screen") {
+                null -> navController.navigate(Screen.LoginScreen.route) {
                     popUpTo("splash_screen") { inclusive = true }
                 }
             }
