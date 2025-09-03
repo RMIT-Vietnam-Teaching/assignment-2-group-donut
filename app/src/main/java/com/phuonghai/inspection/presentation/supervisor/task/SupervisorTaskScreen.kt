@@ -1,45 +1,72 @@
 package com.phuonghai.inspection.presentation.supervisor.task
-
 import android.app.DatePickerDialog
+import android.widget.Toast
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.google.firebase.Timestamp
+import com.google.firebase.auth.FirebaseAuth
+import com.phuonghai.inspection.domain.model.Priority
+import com.phuonghai.inspection.domain.model.Task
+import com.phuonghai.inspection.domain.model.TaskStatus
 import java.text.SimpleDateFormat
 import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SupervisorTaskScreen(
-
+    viewModel: SupervisorTaskViewModel = hiltViewModel()
 ) {
-    val inspectors = listOf("Inspector A", "Inspector B", "Inspector C")
-    val branches = listOf("Branch X", "Branch Y", "Branch Z")
+
+
+    val inspectors by viewModel.inspectors.collectAsState()
+    val branches by viewModel.branches.collectAsState()
+    val error by viewModel.error.collectAsState()
 
     var title by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
     var priority by remember { mutableStateOf("NORMAL") }
-    var selectedInspector by remember { mutableStateOf("") }
-    var selectedBranch by remember { mutableStateOf("") }
-    var dueDate by remember { mutableStateOf("") }
+    var selectedInspectorId by remember { mutableStateOf("") }
+    var selectedInspectorName by remember { mutableStateOf("") }
+    var selectedBranchId by remember { mutableStateOf("") }
+    var selectedBranchName by remember { mutableStateOf("") }
+    var dueDate by remember { mutableStateOf<Timestamp?>(null) }
 
     val priorities = listOf("HIGH", "NORMAL", "LOW")
 
     val calendar = Calendar.getInstance()
     val dateFormat = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+    val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+    val context = LocalContext.current
+    val success by viewModel.success.collectAsState()
 
+    LaunchedEffect(success) {
+        if (success == true) {
+            Toast.makeText(context, "Task assigned successfully!", Toast.LENGTH_SHORT).show()
+
+            // reset fields
+            title = ""
+            description = ""
+            priority = "NORMAL"
+            selectedInspectorName = ""
+            selectedBranchName = ""
+            dueDate = null
+
+            viewModel.resetSuccess()
+        }
+    }
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(horizontal = 16.dp)
-            .padding(top = 60.dp),
+            .padding(horizontal = 16.dp, vertical = 60.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Text("Assign New Task", style = MaterialTheme.typography.headlineSmall)
+
         OutlinedTextField(
             value = title,
             onValueChange = { title = it },
@@ -90,7 +117,7 @@ fun SupervisorTaskScreen(
             onExpandedChange = { expandedInspector = !expandedInspector }
         ) {
             OutlinedTextField(
-                value = selectedInspector,
+                value = selectedInspectorName,
                 onValueChange = {},
                 readOnly = true,
                 label = { Text("Select Inspector") },
@@ -102,9 +129,10 @@ fun SupervisorTaskScreen(
             ) {
                 inspectors.forEach {
                     DropdownMenuItem(
-                        text = { Text(it) },
+                        text = { Text(it.fullName) },
                         onClick = {
-                            selectedInspector = it
+                            selectedInspectorId = it.uId
+                            selectedInspectorName = it.fullName
                             expandedInspector = false
                         }
                     )
@@ -119,7 +147,7 @@ fun SupervisorTaskScreen(
             onExpandedChange = { expandedBranch = !expandedBranch }
         ) {
             OutlinedTextField(
-                value = selectedBranch,
+                value = selectedBranchName,
                 onValueChange = {},
                 readOnly = true,
                 label = { Text("Select Branch") },
@@ -131,9 +159,10 @@ fun SupervisorTaskScreen(
             ) {
                 branches.forEach {
                     DropdownMenuItem(
-                        text = { Text(it) },
+                        text = { Text(it.branchName) },
                         onClick = {
-                            selectedBranch = it
+                            selectedBranchId = it.branchId
+                            selectedBranchName = it.branchName
                             expandedBranch = false
                         }
                     )
@@ -144,33 +173,52 @@ fun SupervisorTaskScreen(
         // Due Date Picker
         Button(
             onClick = {
-//                DatePickerDialog(
-//                    LocalContext.current,
-//                    { _, year, month, dayOfMonth ->
-//                        calendar.set(year, month, dayOfMonth)
-//                        dueDate = dateFormat.format(calendar.time)
-//                    },
-//                    calendar.get(Calendar.YEAR),
-//                    calendar.get(Calendar.MONTH),
-//                    calendar.get(Calendar.DAY_OF_MONTH)
-//                ).show()
+                DatePickerDialog(
+                    context,
+                    { _, year, month, dayOfMonth ->
+                        calendar.set(year, month, dayOfMonth)
+                        dueDate = Timestamp(calendar.time)
+                    },
+                    calendar.get(Calendar.YEAR),
+                    calendar.get(Calendar.MONTH),
+                    calendar.get(Calendar.DAY_OF_MONTH)
+                ).show()
             },
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text(if (dueDate.isEmpty()) "Pick Due Date" else "Due: $dueDate")
+            Text(if (dueDate == null) "Pick Due Date" else "Due: ${dateFormat.format(dueDate!!.toDate())}")
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
-
+        // Assign Task
         Button(
             onClick = {
-//                if (title.isNotBlank() && selectedInspector.isNotBlank() && selectedBranch.isNotBlank()) {
-//                    onAssignTask(title, description, priority, selectedInspector, selectedBranch, dueDate)
-//                }
+                if (title.isNotBlank() &&
+                    selectedInspectorId.isNotBlank() &&
+                    selectedBranchId.isNotBlank() &&
+                    dueDate != null
+                ) {
+                    val task = Task(
+                        taskId = UUID.randomUUID().toString(),
+                        supervisorId = currentUserId,
+                        inspectorId = selectedInspectorId,
+                        branchId = selectedBranchId,
+                        title = title,
+                        description = description,
+                        priority = Priority.valueOf(priority),
+                        status = TaskStatus.ASSIGNED,
+                        dueDate = dueDate,
+                        createdAt = Timestamp.now()
+                    )
+                    viewModel.assignTask(task)
+                }
             },
             modifier = Modifier.fillMaxWidth()
         ) {
             Text("Assign Task")
+        }
+
+        if (error != null) {
+            Text("Error: $error", color = MaterialTheme.colorScheme.error)
         }
     }
 }
