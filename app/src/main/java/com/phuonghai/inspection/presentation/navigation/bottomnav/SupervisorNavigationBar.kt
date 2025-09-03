@@ -21,6 +21,7 @@ import com.donut.assignment2.presentation.supervisor.map.SupervisorMapScreen
 import com.donut.assignment2.presentation.supervisor.profile.SupervisorProfileScreen
 import com.phuonghai.inspection.presentation.home.supervisor.SupervisorDashboard
 import com.phuonghai.inspection.presentation.navigation.Screen
+import com.phuonghai.inspection.presentation.supervisor.task.SupervisorTaskScreen
 
 enum class SupervisorDestination(
     val route: String,
@@ -30,8 +31,9 @@ enum class SupervisorDestination(
     val contentDescription: String
 ) {
     DASHBOARD(Screen.SupervisorDashboard.route, "Dashboard", Icons.Outlined.Home, Icons.Filled.Home, "Dashboard"),
+    TASK(Screen.SupervisorTaskScreen.route, "Task", Icons.Outlined.Task, Icons.Filled.Task, "Task"),
     HISTORY(Screen.SupervisorHistoryScreen.route, "History", Icons.Outlined.History, Icons.Filled.History, "History"),
-    MAP(Screen.SupervisorMapScreen.route,"map", Icons.Outlined.Map, Icons.Filled.Map,"Map"),
+    MAP(Screen.SupervisorMapScreen.route,"Map", Icons.Outlined.Map, Icons.Filled.Map,"Map"),
     PROFILE(Screen.SupervisorProfileScreen.route, "Profile", Icons.Outlined.Person, Icons.Filled.Person, "Profile")
 }
 
@@ -49,6 +51,7 @@ fun SupervisorNavHost(
             composable(destination.route) {
                 when (destination) {
                     SupervisorDestination.DASHBOARD -> SupervisorDashboard()
+                    SupervisorDestination.TASK -> SupervisorTaskScreen()
                     SupervisorDestination.HISTORY -> SupervisorHistoryScreen(navController = navController)
                     SupervisorDestination.MAP -> SupervisorMapScreen(navController = navController)
                     SupervisorDestination.PROFILE -> SupervisorProfileScreen(navController = navController)
