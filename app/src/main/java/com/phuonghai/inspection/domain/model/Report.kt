@@ -6,24 +6,27 @@ import com.google.firebase.firestore.IgnoreExtraProperties
 @IgnoreExtraProperties
 data class Report(
     val reportId: String = "",
-    val inspectorId: String = "",
-    val taskId: String = "",
-    val title: String = "",
-    val description: String = "",
+    val inspectorId: String = "", // Who created the report
+    val taskId: String = "", // Link to task
+    val title: String = "", // Report title/summary
+    val description: String = "", // Detailed notes
     val type: InspectionType = InspectionType.ELECTRICAL,
     val lat: String = "",
     val lng: String = "",
-    val address: String = "",
-    val score: Int? = null,
-    val priority: Priority = Priority.NORMAL,
+    val address: String = "", // Human readable address
+    val score: Int? = null, // Numerical score (0-100)
+    val priority: Priority = Priority.NORMAL, // HIGH, NORMAL, LOW
     val assignStatus: AssignStatus = AssignStatus.PENDING_REVIEW,
     val responseStatus: ResponseStatus = ResponseStatus.PENDING,
     val syncStatus: SyncStatus = SyncStatus.UNSYNCED,
-    val imageUrls: List<String> = emptyList(),
-    val reviewNotes: String = "",
-    val reviewedBy: String = "",
+
+    val imageUrl: String = "", // Single image URL
+    val videoUrl: String = "", // Single video URL
+
+    val reviewNotes: String = "", // Supervisor's review comments
+    val reviewedBy: String = "", // Supervisor who reviewed
     val createdAt: Timestamp? = null,
-    val completedAt: Timestamp? = null
+    val completedAt: Timestamp? = null // When inspection finished
 )
 
 enum class InspectionType {

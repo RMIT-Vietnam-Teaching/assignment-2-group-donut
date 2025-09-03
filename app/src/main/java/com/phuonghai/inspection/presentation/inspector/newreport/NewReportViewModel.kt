@@ -1,5 +1,6 @@
 package com.phuonghai.inspection.presentation.home.inspector.report
 
+import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -27,6 +28,10 @@ class NewReportViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(NewReportUiState())
     val uiState: StateFlow<NewReportUiState> = _uiState.asStateFlow()
 
+    init {
+        loadInspectorInfo()
+    }
+
     fun loadInspectorInfo() {
         Log.d(TAG, "Loading inspector information")
 
@@ -36,9 +41,9 @@ class NewReportViewModel @Inject constructor(
 
                 _uiState.value = _uiState.value.copy(
                     inspectorName = currentUser?.fullName ?: "Unknown Inspector",
-                    inspectorId = "INSP-${currentUser?.uId?.take(5) ?: "00000"}",
+                    inspectorId = "INSP-${currentUser?.uId?.take(6)?.uppercase() ?: "000000"}",
                     currentUserId = currentUser?.uId ?: "",
-                    unreadNotifications = 4
+                    unreadNotifications = 4 // Mock data, replace with real count
                 )
 
                 Log.d(TAG, "Inspector info loaded: ${currentUser?.fullName}")
@@ -51,34 +56,18 @@ class NewReportViewModel @Inject constructor(
         }
     }
 
-    // Các update methods
-    fun updateTitle(title: String) {
-        _uiState.value = _uiState.value.copy(title = title)
-    }
-
-    fun updateNotes(notes: String) {
-        _uiState.value = _uiState.value.copy(notes = notes)
-    }
-
-    fun updateScore(score: String) {
-        _uiState.value = _uiState.value.copy(score = score)
-    }
-
-    fun updateOutcome(outcome: String) {
-        _uiState.value = _uiState.value.copy(outcome = outcome)
-    }
-
-    fun updateStatus(status: String) {
-        _uiState.value = _uiState.value.copy(status = status)
-    }
-
-    fun updateInspectionType(type: String) {
-        _uiState.value = _uiState.value.copy(inspectionType = type)
-    }
-
-    // ✅ Method chính để tạo report
-    fun submitReport() {
-        Log.d(TAG, "Submitting report")
+    fun submitReport(
+        title: String,
+        description: String,
+        score: Int,
+        type: InspectionType,
+        status: AssignStatus,
+        priority: Priority,
+        address: String,
+        imageUris: List<Uri>,
+        videoUri: Uri?
+    ) {
+        Log.d(TAG, "Submitting report: $title")
 
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(
@@ -87,23 +76,50 @@ class NewReportViewModel @Inject constructor(
             )
 
             try {
-                val assignStatus = when (_uiState.value.status) {
-                    "Passed" -> AssignStatus.PASSED
-                    "Failed" -> AssignStatus.FAILED
-                    "Needs Attention" -> AssignStatus.NEEDS_ATTENTION
-                    else -> AssignStatus.PENDING_REVIEW
+                // Upload media files first and get URLs
+                val imageUrls = mutableListOf<String>()
+                if (imageUris.isNotEmpty()) {
+                    // Loop through the list of URIs and upload each one
+                    imageUris.forEach { uri ->
+                        val result = reportRepository.uploadImage(uri)
+                        if (result.isSuccess) {
+                            imageUrls.add(result.getOrNull() ?: "")
+                        } else {
+                            throw result.exceptionOrNull() ?: Exception("Unknown image upload error")
+                        }
+                    }
                 }
 
-                val report = createReportFromUiState(assignStatus)
+                val videoUrl = videoUri?.let { uri ->
+                    val result = reportRepository.uploadVideo(uri)
+                    if (result.isSuccess) {
+                        result.getOrNull()
+                    } else {
+                        throw result.exceptionOrNull() ?: Exception("Unknown video upload error")
+                    }
+                }
+
+                val report = createReport(
+                    title = title,
+                    description = description,
+                    score = score,
+                    type = type,
+                    assignStatus = status,
+                    priority = priority,
+                    address = address,
+                    // Take the URL of the first image. The Report model only supports one image.
+                    imageUrl = imageUrls.firstOrNull() ?: "",
+                    videoUrl = videoUrl ?: ""
+                )
+
                 val result = reportRepository.createReport(report)
 
                 if (result.isSuccess) {
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
                         actionType = null,
-                        message = "Report submitted successfully"
+                        message = "Report submitted successfully! ID: ${result.getOrNull()}"
                     )
-                    clearForm()
                     Log.d(TAG, "Report submitted successfully: ${result.getOrNull()}")
                 } else {
                     _uiState.value = _uiState.value.copy(
@@ -123,8 +139,18 @@ class NewReportViewModel @Inject constructor(
         }
     }
 
-    fun saveAsDraft() {
-        Log.d(TAG, "Saving report as draft")
+    fun saveAsDraft(
+        title: String,
+        description: String,
+        score: Int?,
+        type: InspectionType,
+        status: AssignStatus,
+        priority: Priority,
+        address: String,
+        imageUris: List<Uri>,
+        videoUri: Uri?
+    ) {
+        Log.d(TAG, "Saving report as draft: $title")
 
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(
@@ -133,17 +159,28 @@ class NewReportViewModel @Inject constructor(
             )
 
             try {
-                val report = createReportFromUiState(AssignStatus.DRAFT)
+                // For drafts, we might not need to upload media immediately
+                val report = createReport(
+                    title = title,
+                    description = description,
+                    score = score,
+                    type = type,
+                    assignStatus = AssignStatus.DRAFT,
+                    priority = priority,
+                    address = address,
+                    imageUrl = "", // Empty for draft
+                    videoUrl = ""  // Empty for draft
+                )
+
                 val result = reportRepository.createReport(report)
 
                 if (result.isSuccess) {
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
                         actionType = null,
-                        message = "Report saved as draft successfully"
+                        message = "Draft saved successfully! ID: ${result.getOrNull()}"
                     )
-                    clearForm()
-                    Log.d(TAG, "Report saved as draft successfully: ${result.getOrNull()}")
+                    Log.d(TAG, "Draft saved successfully: ${result.getOrNull()}")
                 } else {
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
@@ -162,49 +199,99 @@ class NewReportViewModel @Inject constructor(
         }
     }
 
-    // ✅ Method để tạo Report object từ UI state
-    private fun createReportFromUiState(assignStatus: AssignStatus): Report {
+    private fun createReport(
+        title: String,
+        description: String,
+        score: Int?,
+        type: InspectionType,
+        assignStatus: AssignStatus,
+        priority: Priority,
+        address: String,
+        imageUrl: String,
+        videoUrl: String
+    ): Report {
         val state = _uiState.value
 
         return Report(
             inspectorId = state.currentUserId,
-            title = state.title,
-            description = state.notes,
-            type = when (state.inspectionType.uppercase()) {
-                "FIRE SAFETY" -> InspectionType.FIRE_SAFETY
-                "FOOD HYGIENE" -> InspectionType.FOOD_HYGIENE
-                else -> InspectionType.valueOf(state.inspectionType.uppercase())
-            },
-            score = state.score.toIntOrNull(),
-            priority = Priority.NORMAL,
+            title = title,
+            description = description,
+            type = type,
+            lat = "", // TODO: Get from location service
+            lng = "", // TODO: Get from location service
+            address = address,
+            score = score,
+            priority = priority,
             assignStatus = assignStatus,
             responseStatus = ResponseStatus.PENDING,
             syncStatus = SyncStatus.UNSYNCED,
+            imageUrl = imageUrl,
+            videoUrl = videoUrl,
             createdAt = Timestamp.now(),
             completedAt = if (assignStatus != AssignStatus.DRAFT) Timestamp.now() else null
         )
+    }
+
+    // TODO: Implement media upload functions
+    private suspend fun uploadImage(imageUri: Uri): String {
+        // Implement Firebase Storage upload for single image
+        // For now, return empty string
+        return ""
+    }
+
+    private suspend fun uploadVideo(videoUri: Uri): String {
+        // Implement Firebase Storage upload for video
+        // For now, return empty string
+        return ""
     }
 
     fun clearMessage() {
         _uiState.value = _uiState.value.copy(message = null)
     }
 
-    private fun clearForm() {
-        _uiState.value = _uiState.value.copy(
-            title = "",
-            notes = "",
-            score = "",
-            outcome = "",
-            status = "Passed",
-            inspectionType = "Electrical"
-        )
+    // Validation methods
+    fun validateTitle(title: String): String? {
+        return when {
+            title.isBlank() -> "Title is required"
+            title.length < 3 -> "Title must be at least 3 characters"
+            title.length > 100 -> "Title must be less than 100 characters"
+            else -> null
+        }
     }
 
-    fun validateForm(): Boolean {
-        val state = _uiState.value
-        return state.title.isNotBlank() &&
-                state.notes.isNotBlank() &&
-                state.score.isNotBlank()
+    fun validateDescription(description: String): String? {
+        return when {
+            description.isBlank() -> "Description is required"
+            description.length < 10 -> "Description must be at least 10 characters"
+            description.length > 1000 -> "Description must be less than 1000 characters"
+            else -> null
+        }
+    }
+
+    fun validateScore(scoreText: String): String? {
+        return when {
+            scoreText.isBlank() -> "Score is required"
+            scoreText.toIntOrNull() == null -> "Score must be a valid number"
+            scoreText.toInt() !in 0..100 -> "Score must be between 0 and 100"
+            else -> null
+        }
+    }
+
+    fun canSubmit(
+        title: String,
+        description: String,
+        score: String
+    ): Boolean {
+        return validateTitle(title) == null &&
+                validateDescription(description) == null &&
+                validateScore(score) == null
+    }
+
+    fun canSaveDraft(
+        title: String,
+        description: String
+    ): Boolean {
+        return title.isNotBlank() || description.isNotBlank()
     }
 }
 
@@ -214,16 +301,9 @@ data class NewReportUiState(
     val inspectorId: String = "",
     val currentUserId: String = "",
     val unreadNotifications: Int = 0,
-    val title: String = "",
-    val notes: String = "",
-    val score: String = "",
-    val outcome: String = "",
-    val status: String = "Passed",
-    val inspectionType: String = "Electrical",
     val actionType: String? = null,
     val message: String? = null
 ) {
-    val canSubmit: Boolean get() = title.isNotBlank() &&
-            notes.isNotBlank() &&
-            score.isNotBlank()
+    val isSubmitting: Boolean get() = isLoading && actionType == "submit"
+    val isSaving: Boolean get() = isLoading && actionType == "save"
 }
