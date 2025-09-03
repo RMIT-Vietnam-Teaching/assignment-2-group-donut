@@ -18,7 +18,7 @@ android {
         versionCode = 1
         versionName = "1.0"
 
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnit4"
     }
 
     buildTypes {
@@ -43,33 +43,38 @@ android {
 }
 
 dependencies {
+    // Firebase Storage
     implementation(libs.firebase.storage.ktx)
-    val compose_version = "1.6.8"
+
+    // Standardize all Compose dependencies using a single, stable BOM
+    val composeBomVersion = "2025.08.01"
+    implementation(platform("androidx.compose:compose-bom:$composeBomVersion"))
+
+    // Core Android & Compose dependencies (versions are managed by the BOM)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
-    implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.ui)
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
-    implementation(libs.vision.internal.vkp)
+    implementation("androidx.compose.material3:material3-window-size-class")
+    implementation("androidx.compose.material:material-icons-extended")
+    debugImplementation(libs.androidx.ui.tooling)
+    debugImplementation(libs.androidx.ui.test.manifest)
+
+    // Testing
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.ui.test.junit4)
-    debugImplementation(libs.androidx.ui.tooling)
-    debugImplementation(libs.androidx.ui.test.manifest)
 
-    // Jetpack Compose
-    implementation(platform("androidx.compose:compose-bom:2024.05.00"))
-    implementation("androidx.compose.ui:ui")
-    implementation("androidx.compose.ui:ui-graphics")
-    implementation("androidx.compose.ui:ui-tooling-preview")
-    implementation("androidx.compose.material3:material3")
-    implementation("androidx.compose.material3:material3-window-size-class")
-    implementation("androidx.compose.material:material-icons-extended:${compose_version}")
+    // Image loading
+    implementation("io.coil-kt:coil-compose:2.4.0")
+
+    // File handling
+    implementation("androidx.activity:activity-compose:1.8.0")
 
     // Firebase BoM and Auth
     implementation(platform("com.google.firebase:firebase-bom:33.0.0"))
@@ -84,12 +89,12 @@ dependencies {
     // Navigation
     implementation("androidx.navigation:navigation-compose:2.8.0")
 
-    //Maps
+    // Maps
     implementation("com.google.maps.android:maps-compose:2.13.0")
     implementation("com.google.android.gms:play-services-maps:18.1.0")
     implementation("com.google.android.gms:play-services-location:21.3.0")
 
-    //CameraX
+    // CameraX
     val camerax_version = "1.5.0-beta02"
     implementation("androidx.camera:camera-core:${camerax_version}")
     implementation("androidx.camera:camera-camera2:${camerax_version}")

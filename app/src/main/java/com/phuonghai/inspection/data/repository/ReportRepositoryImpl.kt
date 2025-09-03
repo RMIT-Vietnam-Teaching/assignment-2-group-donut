@@ -1,8 +1,11 @@
 package com.phuonghai.inspection.data.repository
 
+import android.net.Uri
 import android.util.Log
+import com.google.firebase.Firebase
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.storage.storage
 import com.phuonghai.inspection.domain.model.Report
 import com.phuonghai.inspection.domain.repository.IReportRepository
 import kotlinx.coroutines.tasks.await
@@ -76,4 +79,31 @@ class ReportRepositoryImpl @Inject constructor(
             Result.failure(e)
         }
     }
+
+    private val storage = Firebase.storage
+
+    override suspend fun uploadImage(imageUri: Uri): Result<String> {
+        return try {
+            val imageRef = storage.reference.child("images/${UUID.randomUUID()}")
+            val uploadTask = imageRef.putFile(imageUri).await()
+            val downloadUrl = imageRef.downloadUrl.await().toString()
+            Result.success(downloadUrl)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error uploading image", e)
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun uploadVideo(videoUri: Uri): Result<String> {
+        return try {
+            val videoRef = storage.reference.child("videos/${UUID.randomUUID()}")
+            val uploadTask = videoRef.putFile(videoUri).await()
+            val downloadUrl = videoRef.downloadUrl.await().toString()
+            Result.success(downloadUrl)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error uploading video", e)
+            Result.failure(e)
+        }
+    }
+
 }

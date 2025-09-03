@@ -1,7 +1,10 @@
 package com.phuonghai.inspection.core.di
 
+import com.google.firebase.Firebase
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.storage.FirebaseStorage
+import com.google.firebase.storage.storage
 import com.phuonghai.inspection.data.repository.AuthRepositoryImpl
 import com.phuonghai.inspection.data.repository.BranchRepositoryImpl
 import com.phuonghai.inspection.data.repository.ReportRepositoryImpl
@@ -38,6 +41,10 @@ object AppModule {
     ): IAuthRepository {
         return AuthRepositoryImpl(auth, firestore)
     }
+
+    @Provides
+    @Singleton
+    fun provideFirebaseStorage(): FirebaseStorage = Firebase.storage
 
     @Provides
     @Singleton
