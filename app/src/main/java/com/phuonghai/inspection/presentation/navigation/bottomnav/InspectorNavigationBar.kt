@@ -16,10 +16,12 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.donut.assignment2.presentation.inspector.history.InspectorHistoryReportScreen
 import com.phuonghai.inspection.presentation.home.inspector.InspectorDashboard
 import com.phuonghai.inspection.presentation.home.inspector.InspectorNewReportScreen
 import com.phuonghai.inspection.presentation.home.inspector.InspectorNotificationScreen
 import com.phuonghai.inspection.presentation.home.inspector.InspectorProfileScreen
+import com.phuonghai.inspection.presentation.inspector.task.InspectorTaskScreen
 import com.phuonghai.inspection.presentation.navigation.Screen
 
 enum class InspectorDestination(
@@ -30,7 +32,8 @@ enum class InspectorDestination(
     val contentDescription: String
 ) {
     DASHBOARD(Screen.InspectorDashboard.route, "Dashboard", Icons.Outlined.Home, Icons.Filled.Home, "Dashboard"),
-    REPORTS(Screen.InspectorNewReportScreen.route, "New Report", Icons.Outlined.Description, Icons.Filled.Description, "New Report"),
+    Task(Screen.InspectorTaskScreen.route, "Task", Icons.Outlined.Task, Icons.Filled.Task, "Task"),
+    HISTORY(Screen.InspectorHistoryScreen.route, "History", Icons.Outlined.History, Icons.Filled.History, "History"),
     NOTIFICATIONS(Screen.InspectorNotificationScreen.route, "Notifications", Icons.Outlined.Notifications, Icons.Filled.Notifications, "Notifications"),
     PROFILE(Screen.InspectorProfileScreen.route, "Profile", Icons.Outlined.Person, Icons.Filled.Person, "Profile")
 }
@@ -49,11 +52,16 @@ fun InspectorNavHost(
             composable(destination.route) {
                 when (destination) {
                     InspectorDestination.DASHBOARD -> InspectorDashboard()
-                    InspectorDestination.REPORTS -> InspectorNewReportScreen()
+                    InspectorDestination.Task -> InspectorTaskScreen(navController = navController)
+                    InspectorDestination.HISTORY -> InspectorHistoryReportScreen(navController = navController)
                     InspectorDestination.NOTIFICATIONS -> InspectorNotificationScreen()
                     InspectorDestination.PROFILE -> InspectorProfileScreen()
                 }
             }
+
+        }
+        composable(Screen.InspectorNewReportScreen.route) {
+            InspectorNewReportScreen(navController = navController)
         }
     }
 }

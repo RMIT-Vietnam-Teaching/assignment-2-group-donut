@@ -3,7 +3,6 @@ package com.phuonghai.inspection.presentation.home.inspector
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -20,8 +19,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.phuonghai.inspection.domain.model.User
 import com.phuonghai.inspection.presentation.theme.*
-import java.text.SimpleDateFormat
-import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -316,32 +313,6 @@ fun DashboardContent(
 
             item {
                 RecentReportsSection(recentReports)
-            }
-
-            item {
-                Button(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp),
-                    onClick = onCreateReportClick,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary
-                    ),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Add,
-                        contentDescription = "Tạo báo cáo mới",
-                        tint = MaterialTheme.colorScheme.onPrimary
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        "Tạo báo cáo mới",
-                        color = MaterialTheme.colorScheme.onPrimary,
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
             }
         }
     }

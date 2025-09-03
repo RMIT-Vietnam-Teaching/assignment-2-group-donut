@@ -1,6 +1,5 @@
 package com.phuonghai.inspection.presentation.home.supervisor
 
-import android.content.res.Resources
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
