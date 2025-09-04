@@ -1,4 +1,4 @@
-package com.phuonghai.inspection.presentation.home.inspector.profile
+package com.phuonghai.inspection.presentation.supervisor.profile
 
 import androidx.lifecycle.ViewModel
 import com.phuonghai.inspection.domain.model.User
@@ -13,7 +13,7 @@ import kotlinx.coroutines.launch
 
 
 @HiltViewModel
-class InspectorProfileViewModel @Inject constructor(
+class SupervisorProfileViewModel @Inject constructor(
     private val getUserInformationUseCase: GetUserInformationUseCase
 ) : ViewModel() {
     val currentUserId = FirebaseAuth.getInstance().uid ?: ""
