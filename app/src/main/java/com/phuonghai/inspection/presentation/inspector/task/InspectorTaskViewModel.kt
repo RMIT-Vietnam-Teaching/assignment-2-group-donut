@@ -9,6 +9,7 @@ import com.phuonghai.inspection.domain.model.User
 import com.phuonghai.inspection.domain.repository.IAuthRepository
 import com.phuonghai.inspection.domain.repository.IBranchRepository
 import com.phuonghai.inspection.domain.repository.IUserRepository
+import com.phuonghai.inspection.domain.repository.IReportRepository
 import com.phuonghai.inspection.domain.usecase.GetInspectorTasksUseCase
 import com.phuonghai.inspection.domain.usecase.UpdateTaskStatusUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -24,7 +25,8 @@ class InspectorTaskViewModel @Inject constructor(
     private val getInspectorTasksUseCase: GetInspectorTasksUseCase,
     private val updateTaskStatusUseCase: UpdateTaskStatusUseCase,
     private val branchRepository: IBranchRepository,
-    private val userRepository: IUserRepository
+    private val userRepository: IUserRepository,
+    private val reportRepository: IReportRepository
 ) : ViewModel() {
 
     companion object {
@@ -102,19 +104,33 @@ class InspectorTaskViewModel @Inject constructor(
         val branchesResult = branchRepository.getBranches()
         val branches = branchesResult.getOrNull() ?: emptyList()
 
-        // Get supervisors
-        val usersResult = userRepository.getInspectors()
+        // Get supervisors - sử dụng getAllUsers thay vì getInspectors
+        val usersResult = userRepository.getAllUsers()
         val allUsers = usersResult.getOrNull() ?: emptyList()
+
+        // Get current inspector ID for draft reports
+        val currentUser = authRepository.getCurrentUser()
+        val inspectorId = currentUser?.uId ?: ""
+
+        // Get draft reports for this inspector
+        val draftReportsResult = reportRepository.getDraftReportsByInspectorId(inspectorId)
+        val draftReports = draftReportsResult.getOrNull() ?: emptyList()
 
         tasks.forEach { task ->
             val branch = branches.find { it.branchId == task.branchId }
             val supervisor = allUsers.find { it.uId == task.supervisorId }
 
+            // Check if this task has a draft report
+            val hasDraft = draftReports.any { it.taskId == task.taskId }
+            val draftReport = draftReports.find { it.taskId == task.taskId }
+
             tasksWithDetails.add(
                 TaskWithDetails(
                     task = task,
                     branchName = branch?.branchName ?: "Unknown Branch",
-                    supervisorName = supervisor?.fullName ?: "Unknown Supervisor"
+                    supervisorName = supervisor?.fullName ?: "Unknown Supervisor",
+                    hasDraft = hasDraft,
+                    draftReport = draftReport
                 )
             )
         }
@@ -235,6 +251,16 @@ class InspectorTaskViewModel @Inject constructor(
         Log.d(TAG, "Manual refresh requested")
         loadTasks()
     }
+
+    // Helper method to get draft report for a specific task
+    fun getDraftReportForTask(taskId: String): com.phuonghai.inspection.domain.model.Report? {
+        return _uiState.value.tasks.find { it.task.taskId == taskId }?.draftReport
+    }
+
+    // Helper method to check if a task has draft
+    fun taskHasDraft(taskId: String): Boolean {
+        return _uiState.value.tasks.find { it.task.taskId == taskId }?.hasDraft ?: false
+    }
 }
 
 data class InspectorTaskUiState(
@@ -254,5 +280,7 @@ data class InspectorTaskUiState(
 data class TaskWithDetails(
     val task: Task,
     val branchName: String,
-    val supervisorName: String
+    val supervisorName: String,
+    val hasDraft: Boolean = false,
+    val draftReport: com.phuonghai.inspection.domain.model.Report? = null
 )

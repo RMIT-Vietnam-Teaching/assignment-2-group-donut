@@ -9,4 +9,7 @@ interface IReportRepository {
     suspend fun getReport(reportId: String): Result<Report?>
     suspend fun uploadImage(imageUri: Uri): Result<String>
     suspend fun uploadVideo(videoUri: Uri): Result<String>
+    suspend fun getDraftReportByTaskId(taskId: String): Result<Report?>
+    suspend fun getDraftReportsByInspectorId(inspectorId: String): Result<List<Report>>
+    suspend fun deleteDraftReport(reportId: String): Result<Unit>
 }

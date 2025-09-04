@@ -13,9 +13,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.donut.assignment2.presentation.inspector.history.InspectorHistoryReportScreen
 import com.phuonghai.inspection.presentation.home.inspector.InspectorDashboard
 import com.phuonghai.inspection.presentation.home.inspector.InspectorNewReportScreen
@@ -58,10 +60,29 @@ fun InspectorNavHost(
                     InspectorDestination.PROFILE -> InspectorProfileScreen()
                 }
             }
-
         }
-        composable(Screen.InspectorNewReportScreen.route) {
-            InspectorNewReportScreen(navController = navController)
+
+        // Updated composable with parameters support
+        composable(
+            route = "${Screen.InspectorNewReportScreen.route}?taskId={taskId}&reportId={reportId}",
+            arguments = listOf(
+                navArgument("taskId") {
+                    type = NavType.StringType
+                    nullable = true
+                },
+                navArgument("reportId") {
+                    type = NavType.StringType
+                    nullable = true
+                }
+            )
+        ) { backStackEntry ->
+            val taskId = backStackEntry.arguments?.getString("taskId")
+            val reportId = backStackEntry.arguments?.getString("reportId")
+            InspectorNewReportScreen(
+                navController = navController,
+                taskId = taskId,
+                reportId = reportId
+            )
         }
     }
 }

@@ -56,6 +56,56 @@ class NewReportViewModel @Inject constructor(
         }
     }
 
+    fun setTaskId(taskId: String) {
+        _uiState.value = _uiState.value.copy(currentTaskId = taskId)
+        Log.d(TAG, "Set taskId: $taskId")
+    }
+
+    fun loadDraftReport(reportId: String) {
+        Log.d(TAG, "Loading draft report: $reportId")
+
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(
+                isLoading = true,
+                currentReportId = reportId
+            )
+
+            try {
+                val result = reportRepository.getReport(reportId)
+                result.fold(
+                    onSuccess = { report ->
+                        if (report != null) {
+                            Log.d(TAG, "Draft report loaded: ${report.title}")
+                            _uiState.value = _uiState.value.copy(
+                                isLoading = false,
+                                currentTaskId = report.taskId,
+                                message = "Draft loaded successfully"
+                            )
+                        } else {
+                            _uiState.value = _uiState.value.copy(
+                                isLoading = false,
+                                message = "Draft not found"
+                            )
+                        }
+                    },
+                    onFailure = { error ->
+                        Log.e(TAG, "Error loading draft", error)
+                        _uiState.value = _uiState.value.copy(
+                            isLoading = false,
+                            message = "Error loading draft: ${error.message}"
+                        )
+                    }
+                )
+            } catch (e: Exception) {
+                Log.e(TAG, "Exception loading draft", e)
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    message = "Error loading draft: ${e.message}"
+                )
+            }
+        }
+    }
+
     fun submitReport(
         title: String,
         description: String,
@@ -109,7 +159,8 @@ class NewReportViewModel @Inject constructor(
                     address = address,
                     // Take the URL of the first image. The Report model only supports one image.
                     imageUrl = imageUrls.firstOrNull() ?: "",
-                    videoUrl = videoUrl ?: ""
+                    videoUrl = videoUrl ?: "",
+                    taskId = _uiState.value.currentTaskId
                 )
 
                 val result = reportRepository.createReport(report)
@@ -148,9 +199,10 @@ class NewReportViewModel @Inject constructor(
         priority: Priority,
         address: String,
         imageUris: List<Uri>,
-        videoUri: Uri?
+        videoUri: Uri?,
+        taskId: String = ""
     ) {
-        Log.d(TAG, "Saving report as draft: $title")
+        Log.d(TAG, "Saving report as draft: $title for task: $taskId")
 
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(
@@ -169,7 +221,8 @@ class NewReportViewModel @Inject constructor(
                     priority = priority,
                     address = address,
                     imageUrl = "", // Empty for draft
-                    videoUrl = ""  // Empty for draft
+                    videoUrl = "",  // Empty for draft
+                    taskId = taskId
                 )
 
                 val result = reportRepository.createReport(report)
@@ -208,12 +261,14 @@ class NewReportViewModel @Inject constructor(
         priority: Priority,
         address: String,
         imageUrl: String,
-        videoUrl: String
+        videoUrl: String,
+        taskId: String = ""
     ): Report {
         val state = _uiState.value
 
         return Report(
             inspectorId = state.currentUserId,
+            taskId = taskId,
             title = title,
             description = description,
             type = type,
@@ -230,19 +285,6 @@ class NewReportViewModel @Inject constructor(
             createdAt = Timestamp.now(),
             completedAt = if (assignStatus != AssignStatus.DRAFT) Timestamp.now() else null
         )
-    }
-
-    // TODO: Implement media upload functions
-    private suspend fun uploadImage(imageUri: Uri): String {
-        // Implement Firebase Storage upload for single image
-        // For now, return empty string
-        return ""
-    }
-
-    private suspend fun uploadVideo(videoUri: Uri): String {
-        // Implement Firebase Storage upload for video
-        // For now, return empty string
-        return ""
     }
 
     fun clearMessage() {
@@ -300,6 +342,8 @@ data class NewReportUiState(
     val inspectorName: String = "",
     val inspectorId: String = "",
     val currentUserId: String = "",
+    val currentTaskId: String = "",
+    val currentReportId: String = "",
     val unreadNotifications: Int = 0,
     val actionType: String? = null,
     val message: String? = null

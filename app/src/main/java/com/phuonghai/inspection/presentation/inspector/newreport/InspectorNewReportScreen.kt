@@ -27,15 +27,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Send
-import androidx.compose.material.icons.filled.Task
 import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material3.BadgedBox
@@ -114,6 +111,8 @@ private object Dimens {
 @Composable
 fun InspectorNewReportScreen(
     navController: NavController,
+    taskId: String? = null,
+    reportId: String? = null,
     viewModel: NewReportViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -134,6 +133,20 @@ fun InspectorNewReportScreen(
     var titleError by remember { mutableStateOf<String?>(null) }
     var descriptionError by remember { mutableStateOf<String?>(null) }
     var scoreError by remember { mutableStateOf<String?>(null) }
+
+    // Load draft data nếu có reportId
+    LaunchedEffect(reportId) {
+        if (!reportId.isNullOrBlank()) {
+            viewModel.loadDraftReport(reportId)
+        }
+    }
+
+    // Set taskId nếu có
+    LaunchedEffect(taskId) {
+        if (!taskId.isNullOrBlank()) {
+            viewModel.setTaskId(taskId)
+        }
+    }
 
     // Media pickers
     val imagePickerLauncher = rememberLauncherForActivityResult(
@@ -326,7 +339,8 @@ fun InspectorNewReportScreen(
                             priority = selectedPriority,
                             address = address,
                             imageUris = selectedImages,
-                            videoUri = selectedVideo
+                            videoUri = selectedVideo,
+                            taskId = uiState.currentTaskId.ifBlank { taskId ?: "" }
                         )
                     } else {
                         Toast.makeText(context, "Please enter at least title or description", Toast.LENGTH_SHORT).show()
@@ -351,7 +365,6 @@ fun InspectorNewReportScreen(
         }
     }
 }
-
 @Composable
 private fun InspectorInfoCard(uiState: NewReportUiState) {
     Card(
