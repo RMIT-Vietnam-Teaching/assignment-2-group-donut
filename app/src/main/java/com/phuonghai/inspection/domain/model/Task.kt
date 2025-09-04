@@ -1,6 +1,7 @@
 package com.phuonghai.inspection.domain.model
 
 import com.google.firebase.Timestamp
+import com.phuonghai.inspection.domain.common.Priority
 
 data class Task(
     val taskId: String = "",
@@ -17,3 +18,4 @@ data class Task(
 enum class TaskStatus {
     ASSIGNED, IN_PROGRESS, COMPLETED, CANCELLED, OVERDUE
 }
+

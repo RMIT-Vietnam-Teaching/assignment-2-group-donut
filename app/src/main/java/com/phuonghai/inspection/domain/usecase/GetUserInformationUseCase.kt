@@ -4,13 +4,10 @@ import com.phuonghai.inspection.domain.model.User
 import com.phuonghai.inspection.domain.repository.IUserRepository
 import javax.inject.Inject
 
-class GetInspectorsUseCase @Inject constructor(
+class GetUserInformationUseCase @Inject constructor(
     private val userRepository: IUserRepository
 ) {
-    suspend operator fun invoke(): Result<List<User>> {
-
-        return userRepository.getInspectors()
-
+    suspend operator fun invoke(userId: String): Result<User?> {
+        return userRepository.getUserById(userId)
     }
-
 }

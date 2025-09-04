@@ -79,9 +79,9 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
+import com.phuonghai.inspection.domain.common.Priority
 import com.phuonghai.inspection.domain.model.AssignStatus
 import com.phuonghai.inspection.domain.model.InspectionType
-import com.phuonghai.inspection.domain.model.Priority
 import com.phuonghai.inspection.presentation.home.inspector.report.NewReportViewModel
 import com.phuonghai.inspection.presentation.home.inspector.report.NewReportUiState
 import com.phuonghai.inspection.presentation.theme.BorderDark
