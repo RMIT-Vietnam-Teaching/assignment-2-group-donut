@@ -35,16 +35,16 @@ object AppModule {
 
     @Provides
     @Singleton
+    fun provideFirebaseStorage(): FirebaseStorage = Firebase.storage
+
+    @Provides
+    @Singleton
     fun provideAuthRepository(
         auth: FirebaseAuth,
         firestore: FirebaseFirestore
     ): IAuthRepository {
         return AuthRepositoryImpl(auth, firestore)
     }
-
-    @Provides
-    @Singleton
-    fun provideFirebaseStorage(): FirebaseStorage = Firebase.storage
 
     @Provides
     @Singleton
@@ -77,5 +77,4 @@ object AppModule {
     ): IUserRepository {
         return UserRepositoryImpl(firestore)
     }
-
 }
