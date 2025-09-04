@@ -5,7 +5,9 @@ import android.util.Log
 import com.google.firebase.Firebase
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.Query
 import com.google.firebase.storage.storage
+import com.phuonghai.inspection.domain.model.AssignStatus
 import com.phuonghai.inspection.domain.model.Report
 import com.phuonghai.inspection.domain.repository.IReportRepository
 import kotlinx.coroutines.tasks.await
@@ -80,6 +82,77 @@ class ReportRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun getDraftReportByTaskId(taskId: String): Result<Report?> {
+        return try {
+            Log.d(TAG, "Getting latest draft report for taskId: $taskId")
+
+            val snapshot = firestore.collection(REPORTS_COLLECTION)
+                .whereEqualTo("taskId", taskId)
+                .whereEqualTo("assignStatus", AssignStatus.DRAFT.name)
+                .orderBy("createdAt", Query.Direction.DESCENDING)
+                .limit(1)
+                .get()
+                .await()
+
+            val report = snapshot.documents.firstOrNull()?.let { document ->
+                try {
+                    val report = document.toObject(Report::class.java)
+                    Log.d(TAG, "Found latest draft report for task $taskId: ${report?.reportId} created at ${report?.createdAt}")
+                    report
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error parsing draft report document: ${document.id}", e)
+                    null
+                }
+            }
+
+            Log.d(TAG, "Retrieved latest draft report for task: $taskId, found: ${report != null}")
+            Result.success(report)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error getting latest draft report for task: $taskId", e)
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun getDraftReportsByInspectorId(inspectorId: String): Result<List<Report>> {
+        return try {
+            val snapshot = firestore.collection(REPORTS_COLLECTION)
+                .whereEqualTo("inspectorId", inspectorId)
+                .whereEqualTo("assignStatus", AssignStatus.DRAFT.name)
+                .get()
+                .await()
+
+            val reports = snapshot.documents.mapNotNull { document ->
+                try {
+                    document.toObject(Report::class.java)
+                } catch (e: Exception) {
+                    Log.w(TAG, "Failed to parse draft report document: ${document.id}", e)
+                    null
+                }
+            }
+
+            Log.d(TAG, "Retrieved ${reports.size} draft reports for inspector: $inspectorId")
+            Result.success(reports)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error getting draft reports for inspector: $inspectorId", e)
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun deleteDraftReport(reportId: String): Result<Unit> {
+        return try {
+            firestore.collection(REPORTS_COLLECTION)
+                .document(reportId)
+                .delete()
+                .await()
+
+            Log.d(TAG, "Draft report deleted successfully: $reportId")
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error deleting draft report", e)
+            Result.failure(e)
+        }
+    }
+
     private val storage = Firebase.storage
 
     override suspend fun uploadImage(imageUri: Uri): Result<String> {
@@ -105,5 +178,4 @@ class ReportRepositoryImpl @Inject constructor(
             Result.failure(e)
         }
     }
-
 }

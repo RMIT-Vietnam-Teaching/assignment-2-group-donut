@@ -1,12 +1,12 @@
 package com.phuonghai.inspection.presentation.inspector.task
 
+import android.util.Log
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Assignment
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
@@ -16,6 +16,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -37,11 +38,21 @@ fun InspectorTaskScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val filteredTasks by viewModel.filteredTasks.collectAsStateWithLifecycle()
 
-    // Load tasks when screen opens
+    // Load initial tasks
     LaunchedEffect(Unit) {
         viewModel.loadTasks()
     }
-
+    LaunchedEffect(navController) {
+        val savedStateHandle = navController.currentBackStackEntry?.savedStateHandle
+        savedStateHandle?.getStateFlow("should_refresh_tasks", false)?.collect { shouldRefresh ->
+            if (shouldRefresh) {
+                Log.d("TaskScreen", "Refreshing tasks due to report submission")
+                viewModel.refreshTasks()
+                // Clear flag
+                savedStateHandle["should_refresh_tasks"] = false
+            }
+        }
+    }
     Scaffold(
         topBar = {
             TopAppBar(
@@ -77,29 +88,20 @@ fun InspectorTaskScreen(
         ) {
             Spacer(modifier = Modifier.height(16.dp))
 
+            // Search bar
             OutlinedTextField(
                 value = uiState.searchQuery,
                 onValueChange = viewModel::updateSearchQuery,
-                label = { Text("Search tasks") },
+                label = { Text("Search tasks", color = TextSecondary) },
                 leadingIcon = {
                     Icon(Icons.Default.Search, contentDescription = null, tint = SafetyYellow)
                 },
                 modifier = Modifier.fillMaxWidth(),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = SafetyYellow,
-                    unfocusedBorderColor = BorderDark,
-                    focusedLabelColor = SafetyYellow,
-                    unfocusedLabelColor = TextSecondary,
-                    focusedTextColor = OffWhite,
-                    unfocusedTextColor = OffWhite,
-                    cursorColor = SafetyYellow,
-                    focusedContainerColor = InputBgDark,
-                    unfocusedContainerColor = InputBgDark
-                )
+                singleLine = true,
+                shape = RoundedCornerShape(12.dp)
             )
 
             Spacer(modifier = Modifier.height(12.dp))
-
 
             // Filters Row
             Row(
@@ -181,8 +183,16 @@ fun InspectorTaskScreen(
                                     viewModel.updateTaskStatus(taskId, newStatus)
                                 },
                                 onCreateReportClick = {
-                                    navController.navigate(Screen.InspectorNewReportScreen.route)
-                                }
+                                    Log.d("TaskScreen", "Navigating to new report with taskId: ${taskWithDetails.task.taskId}")
+                                    navController.navigate("${Screen.InspectorNewReportScreen.route}?taskId=${taskWithDetails.task.taskId}")
+                                },
+                                onContinueDraftClick = {
+                                    taskWithDetails.draftReport?.let { draft ->
+                                        Log.d("TaskScreen", "Navigating to continue draft with reportId: ${draft.reportId}")
+                                        navController.navigate("${Screen.InspectorNewReportScreen.route}?reportId=${draft.reportId}")
+                                    }
+                                },
+                                hasDraft = taskWithDetails.hasDraft
                             )
                         }
                     }
@@ -242,6 +252,8 @@ fun TaskCard(
     taskWithDetails: TaskWithDetails,
     onStatusUpdate: (String, TaskStatus) -> Unit,
     onCreateReportClick: () -> Unit,
+    onContinueDraftClick: () -> Unit,
+    hasDraft: Boolean,
     modifier: Modifier = Modifier
 ) {
     val task = taskWithDetails.task
@@ -279,11 +291,40 @@ fun TaskCard(
                 )
             }
 
+            if (hasDraft && taskWithDetails.draftReport != null) {
+                val draftReport = taskWithDetails.draftReport!!
+                Surface(
+                    color = StatusOrange,
+                    shape = RoundedCornerShape(bottomEnd = 8.dp),
+                    tonalElevation = 4.dp,
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
+                    ) {
+                        Text(
+                            text = "DRAFT",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                        Text(
+                            text = draftReport.createdAt?.toDate()?.let {
+                                SimpleDateFormat("dd/MM", Locale.getDefault()).format(it)
+                            } ?: "",
+                            fontSize = 8.sp,
+                            color = Color.White.copy(alpha = 0.8f)
+                        )
+                    }
+                }
+            }
+
             // Card Content
             Column(
                 modifier = Modifier
                     .padding(16.dp)
-                    .padding(top = 24.dp), // Extra padding for priority tag
+                    .padding(top = 24.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Text(
@@ -321,6 +362,20 @@ fun TaskCard(
                     fontSize = 14.sp,
                     color = if (isTaskOverdue(task)) SafetyRed else TextSecondary
                 )
+
+                // ✅ HIỂN THỊ THÔNG TIN DRAFT NẾU CÓ
+                if (hasDraft && taskWithDetails.draftReport != null) {
+                    val draftReport = taskWithDetails.draftReport!!
+                    Text(
+                        "Draft: \"${draftReport.title}\" - ${draftReport.createdAt?.toDate()?.let {
+                            SimpleDateFormat("dd/MM HH:mm", Locale.getDefault()).format(it)
+                        }}",
+                        style = MaterialTheme.typography.bodySmall,
+                        fontSize = 13.sp,
+                        color = StatusOrange,
+                        fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                    )
+                }
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -385,19 +440,19 @@ fun TaskCard(
                             }
                         }
 
-                        // Create report button
+                        // ✅ BUTTON TEXT DỰA TRÊN DRAFT STATUS
                         Button(
-                            onClick = onCreateReportClick,
+                            onClick = if (hasDraft) onContinueDraftClick else onCreateReportClick,
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = SafetyYellow
+                                containerColor = if (hasDraft) StatusOrange else SafetyYellow
                             ),
                             modifier = Modifier.height(32.dp)
                         ) {
                             Text(
-                                text = "New Report",
+                                text = if (hasDraft) "Continue Draft" else "New Report",
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = Color.Black
+                                color = if (hasDraft) Color.White else Color.Black
                             )
                         }
                     }
@@ -435,7 +490,7 @@ fun EmptyTasksContent() {
             text = "You don't have any tasks assigned yet. Check back later or contact your supervisor.",
             style = MaterialTheme.typography.bodyMedium,
             color = TextSecondary,
-            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            textAlign = TextAlign.Center
         )
     }
 }
