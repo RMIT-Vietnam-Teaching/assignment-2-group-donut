@@ -84,19 +84,31 @@ class ReportRepositoryImpl @Inject constructor(
 
     override suspend fun getDraftReportByTaskId(taskId: String): Result<Report?> {
         return try {
+            Log.d(TAG, "Getting latest draft report for taskId: $taskId")
+
             val snapshot = firestore.collection(REPORTS_COLLECTION)
                 .whereEqualTo("taskId", taskId)
                 .whereEqualTo("assignStatus", AssignStatus.DRAFT.name)
+                .orderBy("createdAt", Query.Direction.DESCENDING)
                 .limit(1)
                 .get()
                 .await()
 
-            val report = snapshot.documents.firstOrNull()?.toObject(Report::class.java)
+            val report = snapshot.documents.firstOrNull()?.let { document ->
+                try {
+                    val report = document.toObject(Report::class.java)
+                    Log.d(TAG, "Found latest draft report for task $taskId: ${report?.reportId} created at ${report?.createdAt}")
+                    report
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error parsing draft report document: ${document.id}", e)
+                    null
+                }
+            }
 
-            Log.d(TAG, "Retrieved draft report for task: $taskId")
+            Log.d(TAG, "Retrieved latest draft report for task: $taskId, found: ${report != null}")
             Result.success(report)
         } catch (e: Exception) {
-            Log.e(TAG, "Error getting draft report for task: $taskId", e)
+            Log.e(TAG, "Error getting latest draft report for task: $taskId", e)
             Result.failure(e)
         }
     }

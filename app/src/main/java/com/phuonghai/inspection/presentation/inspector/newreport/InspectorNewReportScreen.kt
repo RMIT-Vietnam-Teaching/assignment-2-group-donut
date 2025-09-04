@@ -1,6 +1,7 @@
 package com.phuonghai.inspection.presentation.home.inspector
 
 import android.net.Uri
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -170,27 +171,72 @@ fun InspectorNewReportScreen(
     LaunchedEffect(Unit) {
         viewModel.loadInspectorInfo()
     }
+    // Populate form fields when draft data is loaded
+    LaunchedEffect(reportId, taskId) {
+        Log.d("NewReportScreen", "LaunchedEffect: reportId=$reportId, taskId=$taskId")
 
-    // Handle success/error messages
-    LaunchedEffect(uiState.message) {
-        uiState.message?.let { message ->
-            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
-            if (message.contains("successfully", ignoreCase = true)) {
-                // Reset form on success
-                title = ""
-                description = ""
-                score = ""
-                address = ""
-                selectedImages = emptyList()
-                selectedVideo = null
-                selectedType = InspectionType.ELECTRICAL
-                selectedStatus = AssignStatus.PASSED
-                selectedPriority = Priority.NORMAL
+        when {
+            !reportId.isNullOrBlank() -> {
+                // Có reportId → load draft report
+                Log.d("NewReportScreen", "Loading draft report: $reportId")
+                viewModel.loadDraftReport(reportId)
             }
-            viewModel.clearMessage()
+            !taskId.isNullOrBlank() -> {
+                // Có taskId → set taskId và check xem có draft không
+                Log.d("NewReportScreen", "Setting taskId and checking for draft: $taskId")
+                viewModel.setTaskId(taskId)
+                viewModel.loadDraftByTaskId(taskId) // ✅ SỬ DỤNG PHƯƠNG THỨC MỚI
+            }
+            else -> {
+                Log.d("NewReportScreen", "No reportId or taskId provided")
+            }
         }
     }
 
+    //POPULATE FORM FIELDS
+    LaunchedEffect(uiState.draftData) {
+        uiState.draftData?.let { report ->
+            Log.d("NewReportScreen", "Populating form with draft data: ${report.title}")
+
+            title = report.title
+            description = report.description
+            score = report.score?.toString() ?: ""
+            selectedType = report.type
+            selectedStatus = report.assignStatus
+            selectedPriority = report.priority
+            address = report.address
+
+            // ✅ LOAD IMAGES VÀ VIDEO NẾU CÓ URL
+            if (report.imageUrl.isNotBlank()) {
+                // TODO: Convert URL back to Uri if needed for display
+                Log.d("NewReportScreen", "Draft has image: ${report.imageUrl}")
+            }
+            if (report.videoUrl.isNotBlank()) {
+                // TODO: Convert URL back to Uri if needed for display
+                Log.d("NewReportScreen", "Draft has video: ${report.videoUrl}")
+            }
+        }
+    }
+    // ✅ HANDLE SUCCESS MESSAGE VÀ NAVIGATION
+    LaunchedEffect(uiState.message, uiState.shouldNavigateBack) {
+        uiState.message?.let { message ->
+            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+
+            if (message.contains("successfully", ignoreCase = true) && uiState.shouldNavigateBack) {
+                kotlinx.coroutines.delay(1000)
+                viewModel.clearNavigationFlag()
+
+                // ✅ SET FLAG để TaskScreen refresh
+                navController.previousBackStackEntry
+                    ?.savedStateHandle
+                    ?.set("should_refresh_tasks", true)
+
+                navController.popBackStack()
+            }
+
+            viewModel.clearMessage()
+        }
+    }
     // Form validation
     fun validateForm(): Boolean {
         titleError = when {

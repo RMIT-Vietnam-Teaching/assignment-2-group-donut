@@ -104,33 +104,28 @@ class InspectorTaskViewModel @Inject constructor(
         val branchesResult = branchRepository.getBranches()
         val branches = branchesResult.getOrNull() ?: emptyList()
 
-        // Get supervisors - sử dụng getAllUsers thay vì getInspectors
+        // Get supervisors
         val usersResult = userRepository.getAllUsers()
         val allUsers = usersResult.getOrNull() ?: emptyList()
 
-        // Get current inspector ID for draft reports
-        val currentUser = authRepository.getCurrentUser()
-        val inspectorId = currentUser?.uId ?: ""
-
-        // Get draft reports for this inspector
-        val draftReportsResult = reportRepository.getDraftReportsByInspectorId(inspectorId)
-        val draftReports = draftReportsResult.getOrNull() ?: emptyList()
-
+        // ✅ PROCESS EACH TASK INDIVIDUALLY để lấy draft report mới nhất của từng task
         tasks.forEach { task ->
             val branch = branches.find { it.branchId == task.branchId }
             val supervisor = allUsers.find { it.uId == task.supervisorId }
 
-            // Check if this task has a draft report
-            val hasDraft = draftReports.any { it.taskId == task.taskId }
-            val draftReport = draftReports.find { it.taskId == task.taskId }
+            // ✅ LẤY DRAFT REPORT MỚI NHẤT CHO TASK CỤ THỂ NÀY
+            val draftReportsResult = reportRepository.getDraftReportByTaskId(task.taskId)
+            val latestDraftReport = draftReportsResult.getOrNull()
+
+            Log.d(TAG, "Task ${task.taskId} - Latest draft: ${latestDraftReport?.reportId}")
 
             tasksWithDetails.add(
                 TaskWithDetails(
                     task = task,
                     branchName = branch?.branchName ?: "Unknown Branch",
                     supervisorName = supervisor?.fullName ?: "Unknown Supervisor",
-                    hasDraft = hasDraft,
-                    draftReport = draftReport
+                    hasDraft = latestDraftReport != null, // ✅ CÓ DRAFT HAY KHÔNG
+                    draftReport = latestDraftReport // ✅ DRAFT REPORT MỚI NHẤT CHO TASK NÀY
                 )
             )
         }

@@ -1,5 +1,6 @@
 package com.phuonghai.inspection.presentation.inspector.task
 
+import android.util.Log
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -37,11 +38,21 @@ fun InspectorTaskScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val filteredTasks by viewModel.filteredTasks.collectAsStateWithLifecycle()
 
-    // Load tasks when screen opens
+    // Load initial tasks
     LaunchedEffect(Unit) {
         viewModel.loadTasks()
     }
-
+    LaunchedEffect(navController) {
+        val savedStateHandle = navController.currentBackStackEntry?.savedStateHandle
+        savedStateHandle?.getStateFlow("should_refresh_tasks", false)?.collect { shouldRefresh ->
+            if (shouldRefresh) {
+                Log.d("TaskScreen", "Refreshing tasks due to report submission")
+                viewModel.refreshTasks()
+                // Clear flag
+                savedStateHandle["should_refresh_tasks"] = false
+            }
+        }
+    }
     Scaffold(
         topBar = {
             TopAppBar(
@@ -172,13 +183,13 @@ fun InspectorTaskScreen(
                                     viewModel.updateTaskStatus(taskId, newStatus)
                                 },
                                 onCreateReportClick = {
-                                    // Navigate to new report with taskId
-                                    navController.navigate("inspector_reports?taskId=${taskWithDetails.task.taskId}")
+                                    Log.d("TaskScreen", "Navigating to new report with taskId: ${taskWithDetails.task.taskId}")
+                                    navController.navigate("${Screen.InspectorNewReportScreen.route}?taskId=${taskWithDetails.task.taskId}")
                                 },
                                 onContinueDraftClick = {
-                                    // Navigate to continue draft with reportId
                                     taskWithDetails.draftReport?.let { draft ->
-                                        navController.navigate("inspector_reports?reportId=${draft.reportId}")
+                                        Log.d("TaskScreen", "Navigating to continue draft with reportId: ${draft.reportId}")
+                                        navController.navigate("${Screen.InspectorNewReportScreen.route}?reportId=${draft.reportId}")
                                     }
                                 },
                                 hasDraft = taskWithDetails.hasDraft
@@ -280,8 +291,8 @@ fun TaskCard(
                 )
             }
 
-            // Draft indicator (top-left corner)
-            if (hasDraft) {
+            if (hasDraft && taskWithDetails.draftReport != null) {
+                val draftReport = taskWithDetails.draftReport!!
                 Surface(
                     color = StatusOrange,
                     shape = RoundedCornerShape(bottomEnd = 8.dp),
@@ -289,13 +300,23 @@ fun TaskCard(
                     modifier = Modifier
                         .align(Alignment.TopStart)
                 ) {
-                    Text(
-                        text = "DRAFT",
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White,
+                    Column(
                         modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
-                    )
+                    ) {
+                        Text(
+                            text = "DRAFT",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                        Text(
+                            text = draftReport.createdAt?.toDate()?.let {
+                                SimpleDateFormat("dd/MM", Locale.getDefault()).format(it)
+                            } ?: "",
+                            fontSize = 8.sp,
+                            color = Color.White.copy(alpha = 0.8f)
+                        )
+                    }
                 }
             }
 
@@ -303,7 +324,7 @@ fun TaskCard(
             Column(
                 modifier = Modifier
                     .padding(16.dp)
-                    .padding(top = 24.dp), // Extra padding for tags
+                    .padding(top = 24.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Text(
@@ -341,6 +362,20 @@ fun TaskCard(
                     fontSize = 14.sp,
                     color = if (isTaskOverdue(task)) SafetyRed else TextSecondary
                 )
+
+                // ✅ HIỂN THỊ THÔNG TIN DRAFT NẾU CÓ
+                if (hasDraft && taskWithDetails.draftReport != null) {
+                    val draftReport = taskWithDetails.draftReport!!
+                    Text(
+                        "Draft: \"${draftReport.title}\" - ${draftReport.createdAt?.toDate()?.let {
+                            SimpleDateFormat("dd/MM HH:mm", Locale.getDefault()).format(it)
+                        }}",
+                        style = MaterialTheme.typography.bodySmall,
+                        fontSize = 13.sp,
+                        color = StatusOrange,
+                        fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                    )
+                }
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -405,7 +440,7 @@ fun TaskCard(
                             }
                         }
 
-                        // Report button - Continue hoặc New Report
+                        // ✅ BUTTON TEXT DỰA TRÊN DRAFT STATUS
                         Button(
                             onClick = if (hasDraft) onContinueDraftClick else onCreateReportClick,
                             colors = ButtonDefaults.buttonColors(
@@ -414,7 +449,7 @@ fun TaskCard(
                             modifier = Modifier.height(32.dp)
                         ) {
                             Text(
-                                text = if (hasDraft) "Continue" else "New Report",
+                                text = if (hasDraft) "Continue Draft" else "New Report",
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = if (hasDraft) Color.White else Color.Black
