@@ -55,7 +55,7 @@ fun InspectorNavHost(
                     InspectorDestination.Task -> InspectorTaskScreen(navController = navController)
                     InspectorDestination.HISTORY -> InspectorHistoryReportScreen(navController = navController)
                     InspectorDestination.NOTIFICATIONS -> InspectorNotificationScreen()
-                    InspectorDestination.PROFILE -> InspectorProfileScreen()
+                    InspectorDestination.PROFILE -> InspectorProfileScreen(navController = navController)
                 }
             }
 
