@@ -41,6 +41,7 @@ data class FakeReport(
     val supervisorResponse: FakeSupervisorResponse, // supervisor’s response
     val supervisorName: String,
     val inspectorName: String,
+    val location: String,
     val time: Long,
     val hasNote: Boolean = false
 )
@@ -67,6 +68,7 @@ val reports = listOf(
         title = "Unsafe Wiring Found",
         supervisorName = "Supervisor A",
         inspectorName = "Inspector A",
+        location = "Building 1, Floor 2",
         time = System.currentTimeMillis() - 1000 * 60 * 60, // 1h ago
         assignStatus = FakeAssignStatus.PENDING_REVIEW,
         supervisorResponse = FakeSupervisorResponse.NONE,
@@ -77,6 +79,7 @@ val reports = listOf(
         title = "Fire Extinguisher Missing",
         supervisorName = "Supervisor B",
         inspectorName = "Inspector B",
+        location = "Building 3, Floor 1",
         time = System.currentTimeMillis() - 1000 * 60 * 60 * 24, // 1 day ago
         assignStatus = FakeAssignStatus.PASSED,
         supervisorResponse = FakeSupervisorResponse.APPROVED
@@ -86,6 +89,7 @@ val reports = listOf(
         title = "Blocked Emergency Exit",
         supervisorName = "Supervisor C",
         inspectorName = "Inspector C",
+        location = "Building 2, Floor 4",
         time = System.currentTimeMillis() - 1000 * 60 * 60 * 48, // 2 days ago
         assignStatus = FakeAssignStatus.PENDING_REVIEW,
         supervisorResponse = FakeSupervisorResponse.NONE
@@ -95,6 +99,7 @@ val reports = listOf(
         title = "Broken Sprinkler System",
         supervisorName = "Supervisor D",
         inspectorName = "Inspector D",
+        location = "Building 1, Floor 3",
         time = System.currentTimeMillis() - 1000 * 60 * 30, // 30 min ago
         assignStatus = FakeAssignStatus.NEEDS_ATTENTION,
         supervisorResponse = FakeSupervisorResponse.APPROVED,
@@ -105,6 +110,7 @@ val reports = listOf(
         title = "Expired Safety Signs",
         supervisorName = "Supervisor E",
         inspectorName = "Inspector E",
+        location = "Building 4, Floor 2",
         time = System.currentTimeMillis() - 1000 * 60 * 60 * 5, // 5h ago
         assignStatus = FakeAssignStatus.FAILED,
         supervisorResponse = FakeSupervisorResponse.REJECTED
@@ -114,6 +120,7 @@ val reports = listOf(
         title = "Emergency Drill Not Conducted",
         supervisorName = "Supervisor F",
         inspectorName = "Inspector F",
+        location = "Building 2, Floor 1",
         time = System.currentTimeMillis() - 1000 * 60 * 60 * 72, // 3 days ago
         assignStatus = FakeAssignStatus.PASSED,
         supervisorResponse = FakeSupervisorResponse.NONE
@@ -123,6 +130,7 @@ val reports = listOf(
         title = "First Aid Kit Missing",
         supervisorName = "Supervisor G",
         inspectorName = "Inspector G",
+        location = "Building 3, Floor 3",
         time = System.currentTimeMillis() - 1000 * 60 * 60 * 96, // 4 days ago
         assignStatus = FakeAssignStatus.FAILED,
         supervisorResponse = FakeSupervisorResponse.NONE // edge case
@@ -132,6 +140,7 @@ val reports = listOf(
         title = "Obstructed Fire Hose",
         supervisorName = "Supervisor H",
         inspectorName = "Inspector H",
+        location = "Building 1, Floor 1",
         time = System.currentTimeMillis() - 1000 * 60 * 60 * 120, // 5 days ago
         assignStatus = FakeAssignStatus.PASSED,
         supervisorResponse = FakeSupervisorResponse.NONE
@@ -315,6 +324,8 @@ fun SupervisorHistoryReportCard(report: FakeReport) {
                 Text("Submitted: $timeString", fontSize = 17.sp, color = Color.Gray)
                 Text("Inspector: ${report.inspectorName}", fontSize = 17.sp, color = Color.Gray)
                 Text("Status: ${report.assignStatus}", fontSize = 17.sp, color = Color.Gray)
+                Text("Location: ${report.location}", fontSize = 17.sp, color = Color.Gray)
+
 
                 // You can add more content here if needed
                 if (report.hasNote) {

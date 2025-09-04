@@ -21,7 +21,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
-import com.phuonghai.inspection.domain.model.Priority
+import com.phuonghai.inspection.domain.common.Priority
 import com.phuonghai.inspection.domain.model.TaskStatus
 import com.phuonghai.inspection.presentation.navigation.Screen
 import com.phuonghai.inspection.presentation.theme.*

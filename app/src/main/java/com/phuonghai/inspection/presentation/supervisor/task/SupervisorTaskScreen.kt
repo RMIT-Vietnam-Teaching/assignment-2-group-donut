@@ -10,7 +10,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
-import com.phuonghai.inspection.domain.model.Priority
+import com.phuonghai.inspection.domain.common.Priority
 import com.phuonghai.inspection.domain.model.Task
 import com.phuonghai.inspection.domain.model.TaskStatus
 import java.text.SimpleDateFormat
@@ -191,26 +191,26 @@ fun SupervisorTaskScreen(
 
         // Assign Task
         Button(
-            onClick = {
-                if (title.isNotBlank() &&
+            enabled = title.isNotBlank() &&
+                    description.isNotBlank() &&
                     selectedInspectorId.isNotBlank() &&
                     selectedBranchId.isNotBlank() &&
-                    dueDate != null
-                ) {
-                    val task = Task(
-                        taskId = UUID.randomUUID().toString(),
-                        supervisorId = currentUserId,
-                        inspectorId = selectedInspectorId,
-                        branchId = selectedBranchId,
-                        title = title,
-                        description = description,
-                        priority = Priority.valueOf(priority),
-                        status = TaskStatus.ASSIGNED,
-                        dueDate = dueDate,
-                        createdAt = Timestamp.now()
-                    )
-                    viewModel.assignTask(task)
-                }
+                    dueDate != null,
+            onClick = {
+                val task = Task(
+                    taskId = UUID.randomUUID().toString(),
+                    supervisorId = currentUserId,
+                    inspectorId = selectedInspectorId,
+                    branchId = selectedBranchId,
+                    title = title,
+                    description = description,
+                    priority = Priority.valueOf(priority),
+                    status = TaskStatus.ASSIGNED,
+                    dueDate = dueDate,
+                    createdAt = Timestamp.now()
+                )
+                viewModel.assignTask(task)
+
             },
             modifier = Modifier.fillMaxWidth()
         ) {

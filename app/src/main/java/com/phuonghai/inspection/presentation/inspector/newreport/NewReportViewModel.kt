@@ -5,6 +5,7 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.Timestamp
+import com.phuonghai.inspection.domain.common.Priority
 import com.phuonghai.inspection.domain.model.*
 import com.phuonghai.inspection.domain.repository.IAuthRepository
 import com.phuonghai.inspection.domain.repository.IReportRepository
