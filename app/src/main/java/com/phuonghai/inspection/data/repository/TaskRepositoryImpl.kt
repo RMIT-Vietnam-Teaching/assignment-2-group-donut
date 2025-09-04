@@ -96,4 +96,29 @@ class TaskRepositoryImpl @Inject constructor(
             Result.failure(e)
         }
     }
+
+    override suspend fun getTasksByBranch(branchId: String): Result<List<Task>> {
+        return try {
+            val snapshot = firestore.collection(TASKS_COLLECTION)
+                .whereEqualTo("branchId", branchId)
+
+                .get()
+                .await()
+
+            val tasks = snapshot.documents.mapNotNull { document ->
+                try {
+                    document.toObject(Task::class.java)
+                } catch (e: Exception) {
+                    Log.w(TAG, "Failed to parse task document: ${document.id}", e)
+                    null
+                }
+            }
+
+            Log.d(TAG, "Retrieved ${tasks.size} tasks for branch: $branchId")
+            Result.success(tasks)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error getting tasks for branch: $branchId", e)
+            Result.failure(e)
+        }
+    }
 }

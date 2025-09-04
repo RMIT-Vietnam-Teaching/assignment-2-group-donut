@@ -2,6 +2,7 @@ package com.phuonghai.inspection.domain.model
 
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.IgnoreExtraProperties
+import com.phuonghai.inspection.domain.common.Priority
 
 @IgnoreExtraProperties
 data class Report(
@@ -45,6 +46,3 @@ enum class SyncStatus {
     SYNCED, UNSYNCED
 }
 
-enum class Priority {
-    HIGH, NORMAL, LOW
-}
