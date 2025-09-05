@@ -153,6 +153,55 @@ class ReportRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun getReportsBySupervisorId(supervisorId: String): Result<List<Report>> {
+        return try {
+            // 1. Get tasks for this supervisor
+            val tasksSnapshot = firestore.collection("tasks")
+                .whereEqualTo("supervisorId", supervisorId)
+                .get()
+                .await()
+
+            val taskIds = tasksSnapshot.documents.mapNotNull { it.getString("taskId") }
+
+            if (taskIds.isEmpty()) {
+                return Result.success(emptyList())
+            }
+            // 2. For each taskId, get reports
+            val reports = mutableListOf<Report>()
+            for (taskId in taskIds) {
+                val reportsSnapshot = firestore.collection(REPORTS_COLLECTION)
+                    .whereEqualTo("taskId", taskId)
+                    .get()
+                    .await()
+
+                val reportsForTask = reportsSnapshot.toObjects(Report::class.java)
+                    .filter { it.assignStatus.name != "DRAFT" }
+                reports.addAll(reportsForTask)
+            }
+            Log.d(TAG, "Retrieved ${reports.size} reports for supervisor: $supervisorId")
+            Result.success(reports)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error getting reports for supervisor: $supervisorId", e)
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun updateStatus(reportId: String, status: String): Result<Unit> {
+        return try {
+            firestore.collection(REPORTS_COLLECTION)
+                .document(reportId)
+                .update("responseStatus", status)
+                .await()
+
+            Log.d(TAG, "Report status updated successfully: $reportId -> $status")
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error updating report status", e)
+            Result.failure(e)
+        }
+    }
+
+
     private val storage = Firebase.storage
 
     override suspend fun uploadImage(imageUri: Uri): Result<String> {
