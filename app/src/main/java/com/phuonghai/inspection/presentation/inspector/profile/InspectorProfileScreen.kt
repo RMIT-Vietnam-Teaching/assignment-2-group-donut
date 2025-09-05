@@ -40,28 +40,49 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import android.widget.Toast
 import com.phuonghai.inspection.R
 import com.phuonghai.inspection.presentation.generalUI.ButtonUI
 import com.phuonghai.inspection.presentation.navigation.Screen
-import com.phuonghai.inspection.presentation.supervisor.profile.SupervisorProfileViewModel
-
+import com.phuonghai.inspection.presentation.home.inspector.profile.InspectorProfileViewModel
 
 @Composable
 fun InspectorProfileScreen(modifier: Modifier = Modifier, navController: NavController) {
     var isChatBoxOpen by remember { mutableStateOf(false) }
+    var showLogoutDialog by remember { mutableStateOf(false) }
 
-    val viewModel: SupervisorProfileViewModel = hiltViewModel()
+    val viewModel: InspectorProfileViewModel = hiltViewModel()
     val userState by viewModel.user.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
+    val signOutSuccess by viewModel.signOutSuccess.collectAsState() // ✅ ADD THIS
+
     var message by remember { mutableStateOf("") }
+    val context = LocalContext.current
 
     LaunchedEffect(Unit) {
         viewModel.loadUser()
+    }
+
+    LaunchedEffect(signOutSuccess) {
+        if (signOutSuccess) {
+            Toast.makeText(context, "Signed out successfully", Toast.LENGTH_SHORT).show()
+            viewModel.clearSignOutSuccess()
+
+            navController.navigate(Screen.LoginScreen.route) {
+                popUpTo(Screen.SplashScreen.route) { inclusive = true }
+                launchSingleTop = true
+            }
+        }
+    }
+
+    fun handleSignOut() {
+        viewModel.signOut()
     }
 
     if(isLoading){
@@ -158,9 +179,10 @@ fun InspectorProfileScreen(modifier: Modifier = Modifier, navController: NavCont
                         horizontalArrangement = Arrangement.SpaceEvenly,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
+                        // ✅ SIMPLE LOGOUT BUTTON - EXACT SAME PATTERN AS PETPAL
                         ButtonUI(
                             text = "Logout",
-                            onClick = {},
+                            onClick = { showLogoutDialog = true },
                             icon = Icons.AutoMirrored.Outlined.Logout,
                             modifier = modifier.clip(RoundedCornerShape(50.dp))
                         )
@@ -172,6 +194,49 @@ fun InspectorProfileScreen(modifier: Modifier = Modifier, navController: NavCont
                         )
                     }
                 }
+
+                // ✅ SIMPLE LOGOUT CONFIRMATION DIALOG
+                if (showLogoutDialog) {
+                    AlertDialog(
+                        onDismissRequest = { showLogoutDialog = false },
+                        title = {
+                            Text(
+                                text = "Sign Out",
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        },
+                        text = {
+                            Text(
+                                text = "Are you sure you want to sign out?",
+                                fontSize = 16.sp
+                            )
+                        },
+                        confirmButton = {
+                            TextButton(
+                                onClick = {
+                                    showLogoutDialog = false
+                                    handleSignOut() // ✅ CALL SIMPLE SIGN OUT FUNCTION
+                                }
+                            ) {
+                                Text(
+                                    "Sign Out",
+                                    color = MaterialTheme.colorScheme.error,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { showLogoutDialog = false }) {
+                                Text("Cancel")
+                            }
+                        },
+                        shape = RoundedCornerShape(16.dp),
+                        containerColor = Color.White
+                    )
+                }
+
+                // Chat Dialog (existing code remains same)
                 if (isChatBoxOpen) {
                     AlertDialog(
                         onDismissRequest = { isChatBoxOpen = false },
@@ -193,11 +258,10 @@ fun InspectorProfileScreen(modifier: Modifier = Modifier, navController: NavCont
                             Column(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(500.dp) // Fixed height for scrollable area
+                                    .height(500.dp)
                                     .padding(top = 8.dp)
                                     .background(Color.White, shape = RoundedCornerShape(12.dp))
                             ) {
-                                // Scrollable chat messages area
                                 Box(
                                     modifier = Modifier
                                         .weight(1f)
@@ -206,7 +270,6 @@ fun InspectorProfileScreen(modifier: Modifier = Modifier, navController: NavCont
                                         .background(Color(0xFFF6F6F6))
                                         .padding(12.dp)
                                 ) {
-                                    // Placeholder message (you can add LazyColumn here later)
                                     Text(
                                         text = "Welcome to the chat! How can I assist you today?",
                                         color = Color.DarkGray,
@@ -214,11 +277,7 @@ fun InspectorProfileScreen(modifier: Modifier = Modifier, navController: NavCont
                                     )
                                 }
 
-                                Spacer(modifier = Modifier.height(8.dp))
-
-                                // Message input row
-
-                                Spacer(modifier = Modifier.height(8.dp))
+                                Spacer(modifier = Modifier.height(16.dp))
 
                                 Row(
                                     modifier = Modifier
@@ -235,8 +294,7 @@ fun InspectorProfileScreen(modifier: Modifier = Modifier, navController: NavCont
                                                 color = Color.Gray
                                             )
                                         },
-                                        modifier = Modifier
-                                            .fillMaxWidth(),
+                                        modifier = Modifier.fillMaxWidth(),
                                         shape = RoundedCornerShape(24.dp),
                                         textStyle = TextStyle(
                                             color = Color.Black,
@@ -274,12 +332,3 @@ fun InspectorProfileScreen(modifier: Modifier = Modifier, navController: NavCont
         }
     }
 }
-
-
-
-//fun handleLogout(navController: NavController){
-//    FirebaseAuth.getInstance().signOut()
-//    navController.navigate(Screen.LoginScreen.route) {
-//        popUpTo(Screen.HomeScreen.route) { inclusive = true } // clears back stack
-//    }
-//}

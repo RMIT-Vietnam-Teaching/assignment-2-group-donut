@@ -10,12 +10,15 @@ interface IAuthRepository {
 
     suspend fun getCurrentUser(): User?
     val authState: SharedFlow<AuthState>
+    suspend fun signOut()
 }
 
+// ✅ ADDED SignedOut STATE
 sealed class AuthState {
     object Success : AuthState()
     data class CodeSent(val verificationId: String) : AuthState()
     data class Error(val message: String?) : AuthState()
     object Loading : AuthState()
     object CodeTimeout : AuthState()
+    object SignedOut : AuthState()
 }

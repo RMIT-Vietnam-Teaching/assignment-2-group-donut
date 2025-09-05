@@ -41,12 +41,10 @@ enum class SupervisorDestination(
 fun SupervisorNavHost(
     navController: NavHostController,
     startDestination: SupervisorDestination,
+    rootNavController: androidx.navigation.NavController,
     modifier: Modifier = Modifier
 ) {
-    NavHost(
-        navController,
-        startDestination = startDestination.route
-    ) {
+    NavHost(navController, startDestination = startDestination.route) {
         SupervisorDestination.entries.forEach { destination ->
             composable(destination.route) {
                 when (destination) {
@@ -54,7 +52,9 @@ fun SupervisorNavHost(
                     SupervisorDestination.TASK -> SupervisorTaskScreen()
                     SupervisorDestination.HISTORY -> SupervisorHistoryScreen(navController = navController)
                     SupervisorDestination.MAP -> SupervisorMapScreen(navController = navController)
-                    SupervisorDestination.PROFILE -> SupervisorProfileScreen(navController = navController)
+                    SupervisorDestination.PROFILE -> SupervisorProfileScreen(
+                        navController = rootNavController
+                    )
                 }
             }
         }
@@ -62,7 +62,10 @@ fun SupervisorNavHost(
 }
 
 @Composable
-fun SupervisorNavigationBar(modifier: Modifier = Modifier) {
+fun SupervisorNavigationBar(
+    rootNavController: androidx.navigation.NavController,
+    modifier: Modifier = Modifier
+) {
     val navController = rememberNavController()
     val startDestination = SupervisorDestination.DASHBOARD
     var selectedDestination by rememberSaveable { mutableIntStateOf(startDestination.ordinal) }
@@ -96,8 +99,9 @@ fun SupervisorNavigationBar(modifier: Modifier = Modifier) {
         }
     ) { contentPadding ->
         SupervisorNavHost(
-            navController,
-            startDestination,
+            navController = navController,
+            startDestination = startDestination,
+            rootNavController = rootNavController,
             modifier = Modifier.padding(contentPadding)
         )
     }

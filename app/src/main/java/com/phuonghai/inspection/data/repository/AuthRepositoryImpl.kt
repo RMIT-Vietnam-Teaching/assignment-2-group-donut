@@ -138,6 +138,25 @@ class AuthRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun signOut() {
+        Log.d(TAG, "signOut() called")
+        try {
+            // Clear stored verification data
+            storedVerificationId = null
+            resendToken = null
+
+            // Sign out from Firebase Auth
+            auth.signOut()
+
+            _authState.tryEmit(AuthState.SignedOut)
+
+            Log.d(TAG, "Firebase Auth signOut completed and state emitted")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error during sign out", e)
+            _authState.tryEmit(AuthState.Error("Sign out failed: ${e.message}"))
+        }
+    }
+
     companion object {
         private const val TAG = "AuthRepository"
     }

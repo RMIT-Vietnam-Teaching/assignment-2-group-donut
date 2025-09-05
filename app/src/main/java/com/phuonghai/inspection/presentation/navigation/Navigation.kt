@@ -17,7 +17,6 @@ import com.phuonghai.inspection.presentation.navigation.bottomnav.SupervisorNavi
 fun InspectionAppNavigation() {
     val navController = rememberNavController()
     val currentUser = FirebaseAuth.getInstance().currentUser
-    // ✅ Always start with splash to determine proper route
     val startDestination = Screen.SplashScreen.route
 
     NavHost(
@@ -45,11 +44,10 @@ fun InspectionAppNavigation() {
 
         // ✅ Direct role-based screens (no intermediate main screen)
         composable(Screen.InspectorDashboard.route) {
-            InspectorNavigationBar()
+            InspectorNavigationBar(rootNavController = navController)
         }
-
         composable(Screen.SupervisorDashboard.route) {
-            SupervisorNavigationBar()
+            SupervisorNavigationBar(rootNavController = navController)
         }
     }
 }

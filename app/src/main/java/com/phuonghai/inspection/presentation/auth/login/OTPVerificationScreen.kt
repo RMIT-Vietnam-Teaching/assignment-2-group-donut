@@ -66,6 +66,8 @@ fun OtpScreen(
                 is AuthState.Loading -> {
                     localError = null
                 }
+                is AuthState.SignedOut -> {
+                }
             }
         }
     }

@@ -60,6 +60,10 @@ fun PhoneLoginScreen(navController: NavController) {
                     isLoading = false
                     localError = "Hết hạn OTP, gửi lại mã."
                 }
+                // ✅ ADD THIS BRANCH
+                is AuthState.SignedOut -> {
+                    isLoading = false
+                }
             }
         }
     }
