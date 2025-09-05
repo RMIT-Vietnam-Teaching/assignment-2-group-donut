@@ -1,6 +1,5 @@
 package com.donut.assignment2.presentation.supervisor.profile
 
-
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -46,23 +45,45 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.google.firebase.auth.FirebaseAuth
 import com.phuonghai.inspection.R
 import com.phuonghai.inspection.presentation.generalUI.ButtonUI
+import com.phuonghai.inspection.presentation.navigation.Screen
 import com.phuonghai.inspection.presentation.supervisor.profile.SupervisorProfileViewModel
 
-
 @Composable
-fun SupervisorProfileScreen(modifier: Modifier = Modifier, navController: NavController) {
+fun SupervisorProfileScreen(
+    modifier: Modifier = Modifier,
+    navController: NavController
+) {
     var isChatBoxOpen by remember { mutableStateOf(false) }
+    var showLogoutDialog by remember { mutableStateOf(false) }
 
     val viewModel: SupervisorProfileViewModel = hiltViewModel()
     val userState by viewModel.user.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
+    val signOutSuccess by viewModel.signOutSuccess.collectAsState()  // ✅ NEW
+
     var message by remember { mutableStateOf("") }
 
-    LaunchedEffect(Unit) {
-        viewModel.loadUser()
+    LaunchedEffect(Unit) { viewModel.loadUser() }
+
+    // ✅ Navigate an toàn sau khi sign out
+    LaunchedEffect(signOutSuccess) {
+        if (signOutSuccess) {
+            viewModel.clearSignOutSuccess()
+            navController.navigate(Screen.LoginScreen.route) {
+                popUpTo(Screen.SplashScreen.route) { inclusive = true }
+                launchSingleTop = true
+            }
+        }
     }
+
+    fun handleLogout() {
+        showLogoutDialog = false
+        viewModel.signOut()
+    }
+
 
     if(isLoading){
         Box(
@@ -160,7 +181,7 @@ fun SupervisorProfileScreen(modifier: Modifier = Modifier, navController: NavCon
                     ) {
                         ButtonUI(
                             text = "Logout",
-                            onClick = {},
+                            onClick = { showLogoutDialog = true }, // Show confirmation dialog
                             icon = Icons.AutoMirrored.Outlined.Logout,
                             modifier = modifier.clip(RoundedCornerShape(50.dp))
                         )
@@ -172,6 +193,47 @@ fun SupervisorProfileScreen(modifier: Modifier = Modifier, navController: NavCon
                         )
                     }
                 }
+
+                if (showLogoutDialog) {
+                    AlertDialog(
+                        onDismissRequest = { showLogoutDialog = false },
+                        title = {
+                            Text(
+                                text = "Sign Out",
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        },
+                        text = {
+                            Text(
+                                text = "Are you sure you want to sign out?",
+                                fontSize = 16.sp
+                            )
+                        },
+                        confirmButton = {
+                            TextButton(
+                                onClick = {
+                                    showLogoutDialog = false
+                                    handleLogout()
+                                }
+                            ) {
+                                Text(
+                                    "Sign Out",
+                                    color = MaterialTheme.colorScheme.error,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { showLogoutDialog = false }) {
+                                Text("Cancel")
+                            }
+                        },
+                        shape = RoundedCornerShape(16.dp),
+                        containerColor = Color.White
+                    )
+                }
+
                 if (isChatBoxOpen) {
                     AlertDialog(
                         onDismissRequest = { isChatBoxOpen = false },
@@ -193,7 +255,7 @@ fun SupervisorProfileScreen(modifier: Modifier = Modifier, navController: NavCon
                             Column(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(500.dp) // Fixed height for scrollable area
+                                    .height(500.dp)
                                     .padding(top = 8.dp)
                                     .background(Color.White, shape = RoundedCornerShape(12.dp))
                             ) {
@@ -206,7 +268,6 @@ fun SupervisorProfileScreen(modifier: Modifier = Modifier, navController: NavCon
                                         .background(Color(0xFFF6F6F6))
                                         .padding(12.dp)
                                 ) {
-                                    // Placeholder message (you can add LazyColumn here later)
                                     Text(
                                         text = "Welcome to the chat! How can I assist you today?",
                                         color = Color.DarkGray,
@@ -217,7 +278,6 @@ fun SupervisorProfileScreen(modifier: Modifier = Modifier, navController: NavCon
                                 Spacer(modifier = Modifier.height(8.dp))
 
                                 // Message input row
-
                                 Spacer(modifier = Modifier.height(8.dp))
 
                                 Row(
@@ -274,12 +334,3 @@ fun SupervisorProfileScreen(modifier: Modifier = Modifier, navController: NavCon
         }
     }
 }
-
-
-
-//fun handleLogout(navController: NavController){
-//    FirebaseAuth.getInstance().signOut()
-//    navController.navigate(Screen.LoginScreen.route) {
-//        popUpTo(Screen.HomeScreen.route) { inclusive = true } // clears back stack
-//    }
-//}

@@ -36,7 +36,7 @@ enum class InspectorDestination(
     DASHBOARD(Screen.InspectorDashboard.route, "Dashboard", Icons.Outlined.Home, Icons.Filled.Home, "Dashboard"),
     Task(Screen.InspectorTaskScreen.route, "Task", Icons.Outlined.Task, Icons.Filled.Task, "Task"),
     HISTORY(Screen.InspectorHistoryScreen.route, "History", Icons.Outlined.History, Icons.Filled.History, "History"),
-    NOTIFICATIONS(Screen.InspectorNotificationScreen.route, "Notifications", Icons.Outlined.Notifications, Icons.Filled.Notifications, "Notifications"),
+    NOTIFICATIONS(Screen.InspectorNotificationScreen.route, "Notification", Icons.Outlined.Notifications, Icons.Filled.Notifications, "Notifications"),
     PROFILE(Screen.InspectorProfileScreen.route, "Profile", Icons.Outlined.Person, Icons.Filled.Person, "Profile")
 }
 
@@ -44,12 +44,10 @@ enum class InspectorDestination(
 fun InspectorNavHost(
     navController: NavHostController,
     startDestination: InspectorDestination,
+    rootNavController: androidx.navigation.NavController,   // <-- thêm
     modifier: Modifier = Modifier
 ) {
-    NavHost(
-        navController,
-        startDestination = startDestination.route
-    ) {
+    NavHost(navController, startDestination = startDestination.route) {
         InspectorDestination.entries.forEach { destination ->
             composable(destination.route) {
                 when (destination) {
@@ -57,7 +55,9 @@ fun InspectorNavHost(
                     InspectorDestination.Task -> InspectorTaskScreen(navController = navController)
                     InspectorDestination.HISTORY -> InspectorHistoryReportScreen(navController = navController)
                     InspectorDestination.NOTIFICATIONS -> InspectorNotificationScreen()
-                    InspectorDestination.PROFILE -> InspectorProfileScreen(navController = navController)
+                    InspectorDestination.PROFILE -> InspectorProfileScreen(
+                        navController = rootNavController   // <-- dùng root
+                    )
                 }
             }
         }
@@ -88,7 +88,10 @@ fun InspectorNavHost(
 }
 
 @Composable
-fun InspectorNavigationBar(modifier: Modifier = Modifier) {
+fun InspectorNavigationBar(
+    modifier: Modifier = Modifier,
+    rootNavController: androidx.navigation.NavController   // <-- thêm
+) {
     val navController = rememberNavController()
     val startDestination = InspectorDestination.DASHBOARD
     var selectedDestination by rememberSaveable { mutableIntStateOf(startDestination.ordinal) }
@@ -122,8 +125,9 @@ fun InspectorNavigationBar(modifier: Modifier = Modifier) {
         }
     ) { contentPadding ->
         InspectorNavHost(
-            navController,
-            startDestination,
+            navController = navController,
+            startDestination = startDestination,
+            rootNavController = rootNavController,
             modifier = Modifier.padding(contentPadding)
         )
     }

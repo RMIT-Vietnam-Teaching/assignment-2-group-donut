@@ -77,4 +77,11 @@ object AppModule {
     ): IUserRepository {
         return UserRepositoryImpl(firestore)
     }
+    @Provides
+    @Singleton
+    fun provideSignOutUseCase(
+        authRepository: IAuthRepository
+    ): com.phuonghai.inspection.domain.usecase.auth.SignOutUseCase {
+        return com.phuonghai.inspection.domain.usecase.auth.SignOutUseCase(authRepository)
+    }
 }
