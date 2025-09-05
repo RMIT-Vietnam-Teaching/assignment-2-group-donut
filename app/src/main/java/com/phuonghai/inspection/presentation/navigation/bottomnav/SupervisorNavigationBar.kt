@@ -19,7 +19,7 @@ import androidx.navigation.compose.rememberNavController
 import com.donut.assignment2.presentation.supervisor.history.SupervisorHistoryScreen
 import com.donut.assignment2.presentation.supervisor.map.SupervisorMapScreen
 import com.donut.assignment2.presentation.supervisor.profile.SupervisorProfileScreen
-import com.phuonghai.inspection.presentation.home.supervisor.SupervisorDashboard
+import com.phuonghai.inspection.presentation.home.supervisor.SupervisorDashboardScreen
 import com.phuonghai.inspection.presentation.navigation.Screen
 import com.phuonghai.inspection.presentation.supervisor.task.SupervisorTaskScreen
 
@@ -48,7 +48,7 @@ fun SupervisorNavHost(
         SupervisorDestination.entries.forEach { destination ->
             composable(destination.route) {
                 when (destination) {
-                    SupervisorDestination.DASHBOARD -> SupervisorDashboard()
+                    SupervisorDestination.DASHBOARD -> SupervisorDashboardScreen()
                     SupervisorDestination.TASK -> SupervisorTaskScreen()
                     SupervisorDestination.HISTORY -> SupervisorHistoryScreen(navController = navController)
                     SupervisorDestination.MAP -> SupervisorMapScreen(navController = navController)

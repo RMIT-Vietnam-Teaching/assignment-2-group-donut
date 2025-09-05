@@ -19,7 +19,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.donut.assignment2.presentation.inspector.history.InspectorHistoryReportScreen
-import com.phuonghai.inspection.presentation.home.inspector.InspectorDashboard
+import com.phuonghai.inspection.presentation.home.inspector.InspectorDashboardScreen
 import com.phuonghai.inspection.presentation.home.inspector.InspectorNewReportScreen
 import com.phuonghai.inspection.presentation.home.inspector.InspectorNotificationScreen
 import com.phuonghai.inspection.presentation.home.inspector.InspectorProfileScreen
@@ -51,7 +51,7 @@ fun InspectorNavHost(
         InspectorDestination.entries.forEach { destination ->
             composable(destination.route) {
                 when (destination) {
-                    InspectorDestination.DASHBOARD -> InspectorDashboard()
+                    InspectorDestination.DASHBOARD -> InspectorDashboardScreen()
                     InspectorDestination.Task -> InspectorTaskScreen(navController = navController)
                     InspectorDestination.HISTORY -> InspectorHistoryReportScreen(navController = navController)
                     InspectorDestination.NOTIFICATIONS -> InspectorNotificationScreen()

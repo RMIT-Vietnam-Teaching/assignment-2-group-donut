@@ -202,7 +202,7 @@ fun InspectorProfileScreen(modifier: Modifier = Modifier, navController: NavCont
                         title = {
                             Text(
                                 text = "Sign Out",
-                                fontSize = 20.sp,
+                                fontSize = 24.sp,
                                 fontWeight = FontWeight.Bold
                             )
                         },
