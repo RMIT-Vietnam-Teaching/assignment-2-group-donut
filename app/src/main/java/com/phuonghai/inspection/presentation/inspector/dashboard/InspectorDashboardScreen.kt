@@ -198,7 +198,7 @@ private fun getCurrentDateTime(): String {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun InspectorDashboard(
+fun InspectorDashboardScreen(
     viewModel: InspectorDashboardViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()

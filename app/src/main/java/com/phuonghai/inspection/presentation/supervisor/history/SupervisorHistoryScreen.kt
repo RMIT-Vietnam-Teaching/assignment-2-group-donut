@@ -3,7 +3,6 @@ package com.donut.assignment2.presentation.supervisor.history
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccessTime
@@ -12,6 +11,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -22,136 +22,28 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.phuonghai.inspection.domain.model.Report
+import com.phuonghai.inspection.presentation.supervisor.history.SupervisorHistoryViewModel
 import com.phuonghai.inspection.presentation.theme.SafetyYellow
 import java.text.SimpleDateFormat
 import java.util.*
 
-// ---- Fake Models for Testing UI ----
-data class FakeUser(val id: String, val fullName: String)
-
-// ---- Fake Models ----
-enum class FakeAssignStatus { PENDING_REVIEW, PASSED, FAILED, NEEDS_ATTENTION, DRAFT }
-enum class FakeSupervisorResponse { APPROVED, REJECTED, NONE }
-
-data class FakeReport(
-    val id: String,
-    val title: String,
-    val assignStatus: FakeAssignStatus,        // inspector’s assignment
-    val supervisorResponse: FakeSupervisorResponse, // supervisor’s response
-    val supervisorName: String,
-    val inspectorName: String,
-    val location: String,
-    val time: Long,
-    val hasNote: Boolean = false
-)
-
-data class FakeDashboard(
-    val user: FakeUser,
-    val pendingReports: Int,
-    val passedReports: Int,
-    val failedReports: Int,
-    val needsAttention: Int,
-    val draftReports: Int,
-    val recentReports: List<FakeReport>,
-    val isFirstTimeUser: Boolean = false
-) {
-    fun getStatusSummary(): String {
-        return "Pending: $pendingReports • Passed: $passedReports • Failed: $failedReports • Needs Attention: $needsAttention • Draft: $draftReports"
-    }
-}
-
-// ✅ Fake reports for supervisor dashboard
-val reports = listOf(
-    FakeReport(
-        id = "R001",
-        title = "Unsafe Wiring Found",
-        supervisorName = "Supervisor A",
-        inspectorName = "Inspector A",
-        location = "Building 1, Floor 2",
-        time = System.currentTimeMillis() - 1000 * 60 * 60, // 1h ago
-        assignStatus = FakeAssignStatus.PENDING_REVIEW,
-        supervisorResponse = FakeSupervisorResponse.NONE,
-        hasNote = true
-    ),
-    FakeReport(
-        id = "R002",
-        title = "Fire Extinguisher Missing",
-        supervisorName = "Supervisor B",
-        inspectorName = "Inspector B",
-        location = "Building 3, Floor 1",
-        time = System.currentTimeMillis() - 1000 * 60 * 60 * 24, // 1 day ago
-        assignStatus = FakeAssignStatus.PASSED,
-        supervisorResponse = FakeSupervisorResponse.APPROVED
-    ),
-    FakeReport(
-        id = "R003",
-        title = "Blocked Emergency Exit",
-        supervisorName = "Supervisor C",
-        inspectorName = "Inspector C",
-        location = "Building 2, Floor 4",
-        time = System.currentTimeMillis() - 1000 * 60 * 60 * 48, // 2 days ago
-        assignStatus = FakeAssignStatus.PENDING_REVIEW,
-        supervisorResponse = FakeSupervisorResponse.NONE
-    ),
-    FakeReport(
-        id = "R004",
-        title = "Broken Sprinkler System",
-        supervisorName = "Supervisor D",
-        inspectorName = "Inspector D",
-        location = "Building 1, Floor 3",
-        time = System.currentTimeMillis() - 1000 * 60 * 30, // 30 min ago
-        assignStatus = FakeAssignStatus.NEEDS_ATTENTION,
-        supervisorResponse = FakeSupervisorResponse.APPROVED,
-        hasNote = true
-    ),
-    FakeReport(
-        id = "R005",
-        title = "Expired Safety Signs",
-        supervisorName = "Supervisor E",
-        inspectorName = "Inspector E",
-        location = "Building 4, Floor 2",
-        time = System.currentTimeMillis() - 1000 * 60 * 60 * 5, // 5h ago
-        assignStatus = FakeAssignStatus.FAILED,
-        supervisorResponse = FakeSupervisorResponse.REJECTED
-    ),
-    FakeReport(
-        id = "R006",
-        title = "Emergency Drill Not Conducted",
-        supervisorName = "Supervisor F",
-        inspectorName = "Inspector F",
-        location = "Building 2, Floor 1",
-        time = System.currentTimeMillis() - 1000 * 60 * 60 * 72, // 3 days ago
-        assignStatus = FakeAssignStatus.PASSED,
-        supervisorResponse = FakeSupervisorResponse.NONE
-    ),
-    FakeReport(
-        id = "R007",
-        title = "First Aid Kit Missing",
-        supervisorName = "Supervisor G",
-        inspectorName = "Inspector G",
-        location = "Building 3, Floor 3",
-        time = System.currentTimeMillis() - 1000 * 60 * 60 * 96, // 4 days ago
-        assignStatus = FakeAssignStatus.FAILED,
-        supervisorResponse = FakeSupervisorResponse.NONE // edge case
-    ),
-    FakeReport(
-        id = "R008",
-        title = "Obstructed Fire Hose",
-        supervisorName = "Supervisor H",
-        inspectorName = "Inspector H",
-        location = "Building 1, Floor 1",
-        time = System.currentTimeMillis() - 1000 * 60 * 60 * 120, // 5 days ago
-        assignStatus = FakeAssignStatus.PASSED,
-        supervisorResponse = FakeSupervisorResponse.NONE
-    )
-)
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SupervisorHistoryScreen(navController: NavController) {
-    var searchQuery by remember { mutableStateOf("") }
+fun SupervisorHistoryScreen(
+    navController: NavController,
+) {
 
+    val viewModel: SupervisorHistoryViewModel = hiltViewModel()
+
+    val reportsState by viewModel.reports.collectAsState()
+    val isLoadingState by viewModel.isLoading.collectAsState()
+
+
+
+    var searchQuery by remember { mutableStateOf("") }
     // Dropdown states
     var expandedTime by remember { mutableStateOf(false) }
     var expandedStatus by remember { mutableStateOf(false) }
@@ -286,18 +178,82 @@ fun SupervisorHistoryScreen(navController: NavController) {
         },
         containerColor = Color(0xFF121212)
     ) { innerPadding ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .padding(horizontal = 12.dp)
-                .padding(bottom = 100.dp)
-                .padding(top = 8.dp)
-            ,
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            items(reports) { report ->
-                SupervisorHistoryReportCard(report)
+        if(isLoadingState){
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black),
+                contentAlignment = Alignment.Center
+            ){
+                CircularProgressIndicator(color = Color.White)
+            }
+        }else{
+
+            // ✅ Apply filters and sorting
+            val filteredReports = reportsState
+                // 🔍 Search filter
+                .filter { report ->
+                    searchQuery.isBlank() ||
+                            report.title.contains(searchQuery, ignoreCase = true) ||
+                            report.address?.contains(searchQuery, ignoreCase = true) == true
+                }
+                // 📌 Status filter
+                .filter { report ->
+                    when (selectedStatusFilter) {
+                        "Pending Review" -> report.assignStatus.name == "PENDING"
+                        "Passed" -> report.assignStatus.name == "PASSED"
+                        "Failed" -> report.assignStatus.name == "FAILED"
+                        "Needs Attention" -> report.assignStatus.name == "NEEDS_ATTENTION"
+                        else -> true
+                    }
+                }
+                // 📌 Response filter
+                .filter { report ->
+                    when (selectedResponseFilter) {
+                        "Approved" -> report.responseStatus.name == "APPROVED"
+                        "Rejected" -> report.responseStatus.name == "REJECTED"
+                        else -> true
+                    }
+                }
+                // 📌 Time sort
+                .sortedWith(compareBy { report ->
+                    when (selectedTimeFilter) {
+                        "Most Recent" -> -(report.completedAt?.toDate()?.time ?: 0L)
+                        "Oldest" -> report.completedAt?.toDate()?.time ?: 0L
+                        "Today" -> if (isToday(report.completedAt?.toDate())) 0 else 1
+                        "This Week" -> if (isThisWeek(report.completedAt?.toDate())) 0 else 1
+                        else -> -(report.completedAt?.toDate()?.time ?: 0L)
+                    }
+                })
+
+            // 👉 Replace LazyColumn with filtered list
+            if (filteredReports.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(innerPadding),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "No reports found",
+                        color = SafetyYellow,
+                        fontSize = 16.sp
+                    )
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(innerPadding)
+                        .padding(horizontal = 12.dp)
+                        .padding(bottom = 100.dp)
+                        .padding(top = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(filteredReports.size) { index ->
+                        SupervisorHistoryReportCard(filteredReports[index])
+                    }
+                }
             }
         }
     }
@@ -305,9 +261,9 @@ fun SupervisorHistoryScreen(navController: NavController) {
 
 // ---- Report Card for History ----
 @Composable
-fun SupervisorHistoryReportCard(report: FakeReport) {
-    val dateFormat = SimpleDateFormat("HH:mm dd/MM/yyyy", Locale.getDefault())
-    val timeString = dateFormat.format(Date(report.time))
+fun SupervisorHistoryReportCard(report: Report) {
+    val dateFormat = SimpleDateFormat("EEE MMM dd yyyy", Locale.getDefault())
+    val formattedDate = report.completedAt?.toDate()?.let { dateFormat.format(it) } ?: ""
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -321,22 +277,15 @@ fun SupervisorHistoryReportCard(report: FakeReport) {
             Column(modifier = Modifier.padding(14.dp)) {
                 Text(report.title, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.White)
                 Spacer(modifier = Modifier.height(4.dp))
-                Text("Submitted: $timeString", fontSize = 17.sp, color = Color.Gray)
-                Text("Inspector: ${report.inspectorName}", fontSize = 17.sp, color = Color.Gray)
+                Text("Submitted: $formattedDate", fontSize = 17.sp, color = Color.Gray)
+                Text("Inspector: ${"report.inspectorName"}", fontSize = 17.sp, color = Color.Gray)
                 Text("Status: ${report.assignStatus}", fontSize = 17.sp, color = Color.Gray)
-                Text("Location: ${report.location}", fontSize = 17.sp, color = Color.Gray)
-
-
-                // You can add more content here if needed
-                if (report.hasNote) {
-                    Spacer(Modifier.height(6.dp))
-                    Text("📌 Note attached", fontSize = 13.sp, color = SafetyYellow)
-                }
+                Text("Location: ${report.address}", fontSize = 17.sp, color = Color.Gray)
             }
 
             // 🎯 Response Tag: This is now a direct child of the Box and can be aligned
             Text(
-                text = report.supervisorResponse.toString(), // Convert enum to string
+                text = report.responseStatus.toString(), // Convert enum to string
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color.Black,
@@ -348,4 +297,21 @@ fun SupervisorHistoryReportCard(report: FakeReport) {
             )
         }
     }
+}
+fun isToday(date: Date?): Boolean {
+    if (date == null) return false
+    val cal1 = Calendar.getInstance()
+    val cal2 = Calendar.getInstance()
+    cal2.time = date
+    return cal1.get(Calendar.YEAR) == cal2.get(Calendar.YEAR) &&
+            cal1.get(Calendar.DAY_OF_YEAR) == cal2.get(Calendar.DAY_OF_YEAR)
+}
+
+fun isThisWeek(date: Date?): Boolean {
+    if (date == null) return false
+    val cal1 = Calendar.getInstance()
+    val cal2 = Calendar.getInstance()
+    cal2.time = date
+    return cal1.get(Calendar.WEEK_OF_YEAR) == cal2.get(Calendar.WEEK_OF_YEAR) &&
+            cal1.get(Calendar.YEAR) == cal2.get(Calendar.YEAR)
 }
