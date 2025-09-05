@@ -393,19 +393,29 @@ fun InspectorNewReportScreen(
                     }
                 },
                 onSubmitReport = {
-                    if (validateForm()) {
-                        viewModel.submitReport(
-                            title = title,
-                            description = description,
-                            score = score.toInt(),
-                            type = selectedType,
-                            status = selectedStatus,
-                            priority = selectedPriority,
-                            address = address,
-                            imageUris = selectedImages,
-                            videoUri = selectedVideo
-                        )
+                    // 1) Không cho submit nếu còn DRAFT
+                    if (selectedStatus == AssignStatus.DRAFT) {
+                        Toast.makeText(context, "Please choose a non-draft status before submitting", Toast.LENGTH_SHORT).show()
+                        return@ActionButtonsSection
                     }
+
+                    // 2) Validate form
+                    if (!validateForm()) {
+                        return@ActionButtonsSection
+                    }
+
+                    // 3) Submit
+                    viewModel.submitReport(
+                        title = title,
+                        description = description,
+                        score = score.toInt(),
+                        type = selectedType,
+                        status = selectedStatus,
+                        priority = selectedPriority,
+                        address = address,
+                        imageUris = selectedImages,
+                        videoUri = selectedVideo
+                    )
                 }
             )
         }

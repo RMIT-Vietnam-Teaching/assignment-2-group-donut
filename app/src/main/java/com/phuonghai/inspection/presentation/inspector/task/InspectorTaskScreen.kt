@@ -103,12 +103,12 @@ fun InspectorTaskScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Filters Row
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                // Priority Dropdown
+                // Priority
                 DropdownFilter(
                     label = "Priority",
                     options = listOf("All", "HIGH", "NORMAL", "LOW"),
@@ -117,7 +117,7 @@ fun InspectorTaskScreen(
                     modifier = Modifier.weight(1f)
                 )
 
-                // Status Dropdown
+                // Status
                 DropdownFilter(
                     label = "Status",
                     options = listOf("All", "ASSIGNED", "IN_PROGRESS", "COMPLETED", "CANCELLED", "OVERDUE"),
@@ -125,21 +125,14 @@ fun InspectorTaskScreen(
                     onOptionSelected = viewModel::updateStatusFilter,
                     modifier = Modifier.weight(1f)
                 )
-            }
 
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Date filter
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center
-            ) {
+                // Due Date
                 DropdownFilter(
                     label = "Due Date",
                     options = listOf("All", "Today", "This Week", "This Month"),
                     selectedOption = uiState.selectedDateFilter,
                     onOptionSelected = viewModel::updateDateFilter,
-                    modifier = Modifier.width(200.dp)
+                    modifier = Modifier.weight(1f)
                 )
             }
 
