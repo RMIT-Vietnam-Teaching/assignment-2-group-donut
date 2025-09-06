@@ -121,4 +121,27 @@ class TaskRepositoryImpl @Inject constructor(
             Result.failure(e)
         }
     }
+
+    override suspend fun getTaskIdByReportId(reportId: String): Result<String> {
+        return try {
+            val snapshot = firestore.collection("reports")
+                .whereEqualTo("reportId", reportId)
+                .get()
+                .await()
+
+            if (!snapshot.isEmpty) {
+                // take the first matching document
+                val taskId = snapshot.documents[0].getString("taskId")
+                if (taskId != null) {
+                    Result.success(taskId)
+                } else {
+                    Result.failure(Exception("taskId not found for reportId: $reportId"))
+                }
+            } else {
+                Result.failure(Exception("No report found with reportId: $reportId"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 }

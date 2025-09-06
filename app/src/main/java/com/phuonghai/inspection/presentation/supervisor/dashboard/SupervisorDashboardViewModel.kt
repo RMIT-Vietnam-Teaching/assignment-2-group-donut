@@ -6,10 +6,13 @@ import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseAuth
 import com.phuonghai.inspection.domain.model.Report
 import com.phuonghai.inspection.domain.model.ResponseStatus
+import com.phuonghai.inspection.domain.model.TaskStatus
 import com.phuonghai.inspection.domain.model.User
 import com.phuonghai.inspection.domain.usecase.GetReportsBySupervisorUseCase
+import com.phuonghai.inspection.domain.usecase.GetTaskIdByReportIdUseCase
 import com.phuonghai.inspection.domain.usecase.GetUserInformationUseCase
 import com.phuonghai.inspection.domain.usecase.UpdateResponseStatusReportUseCase
+import com.phuonghai.inspection.domain.usecase.UpdateTaskStatusUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -22,7 +25,9 @@ import kotlin.collections.emptyList as emptyList1
 class SupervisorDashboardViewModel @Inject constructor(
     private val getReportsBySupervisorUseCase: GetReportsBySupervisorUseCase,
     private val getUserInformationUseCase: GetUserInformationUseCase,
-    private val updateResponseStatusReportUseCase: UpdateResponseStatusReportUseCase
+    private val updateResponseStatusReportUseCase: UpdateResponseStatusReportUseCase,
+    private val getTaskIdByReportIdUseCase: GetTaskIdByReportIdUseCase,
+    private val updateTaskStatusUseCase: UpdateTaskStatusUseCase
 ) : ViewModel() {
     private val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
 
@@ -38,10 +43,6 @@ class SupervisorDashboardViewModel @Inject constructor(
 
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
-    init {
-        loadUser()
-        loadReports()
-    }
 
     fun loadReports() {
         viewModelScope.launch {
@@ -81,10 +82,24 @@ class SupervisorDashboardViewModel @Inject constructor(
     }
     fun approveReport(reportId: String) {
         viewModelScope.launch {
-            val result = updateResponseStatusReportUseCase(reportId, ResponseStatus.APPROVED.name)
-            result.onSuccess {
+            _isLoading.value = true
+            try {
+                // 1. Update report response status
+                val result = updateResponseStatusReportUseCase(reportId, ResponseStatus.APPROVED.name)
+                result.getOrThrow() // throws if failed
+
+                // 2. Get related taskId
+                val taskIdResult = getTaskIdByReportIdUseCase(reportId)
+                val taskId = taskIdResult.getOrThrow()
+
+                // 3. Update task status
+                val result2 = updateTaskStatusUseCase(taskId, TaskStatus.COMPLETED)
+                result2.getOrThrow()
+
+                // 4. Reload data if everything succeeded
                 loadReports()
-            }.onFailure { e ->
+                _isLoading.value = false
+            } catch (e: Exception) {
                 Log.e("SupervisorDashboardViewModel", "Error approving report", e)
             }
         }

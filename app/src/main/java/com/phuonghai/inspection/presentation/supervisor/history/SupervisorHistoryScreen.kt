@@ -25,6 +25,8 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.phuonghai.inspection.domain.model.Report
+import com.phuonghai.inspection.domain.model.ResponseStatus
+import com.phuonghai.inspection.presentation.navigation.Screen
 import com.phuonghai.inspection.presentation.supervisor.history.SupervisorHistoryViewModel
 import com.phuonghai.inspection.presentation.theme.SafetyYellow
 import java.text.SimpleDateFormat
@@ -251,7 +253,7 @@ fun SupervisorHistoryScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(filteredReports.size) { index ->
-                        SupervisorHistoryReportCard(filteredReports[index])
+                        SupervisorHistoryReportCard(filteredReports[index], navController)
                     }
                 }
             }
@@ -261,7 +263,7 @@ fun SupervisorHistoryScreen(
 
 // ---- Report Card for History ----
 @Composable
-fun SupervisorHistoryReportCard(report: Report) {
+fun SupervisorHistoryReportCard(report: Report, navController: NavController) {
     val dateFormat = SimpleDateFormat("EEE MMM dd yyyy", Locale.getDefault())
     val formattedDate = report.completedAt?.toDate()?.let { dateFormat.format(it) } ?: ""
 
@@ -269,7 +271,10 @@ fun SupervisorHistoryReportCard(report: Report) {
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = Color(0xFF2C2C2C)),
         shape = RoundedCornerShape(12.dp),
-        elevation = CardDefaults.cardElevation(6.dp)
+        elevation = CardDefaults.cardElevation(6.dp),
+        onClick = {
+            navController.navigate(Screen.SupervisorReportDetailScreen.route + "/${report.reportId}")
+        }
     ) {
         // Use a Box to allow children to be positioned individually
         Box(modifier = Modifier.fillMaxWidth()) {
@@ -288,13 +293,32 @@ fun SupervisorHistoryReportCard(report: Report) {
                 text = report.responseStatus.toString(), // Convert enum to string
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color.Black,
+                color = Color.White,
                 modifier = Modifier
                     .align(Alignment.TopEnd) // This is now a direct child of Box
                     .padding(8.dp)
-                    .background(SafetyYellow, shape = RoundedCornerShape(8.dp))
+                    .background( Color(
+                        when (report.responseStatus) {
+                            ResponseStatus.APPROVED -> 0xFF4CAF50
+                            ResponseStatus.REJECTED -> 0xFFE53935
+                            else -> 0
+                        }
+                    ), shape = RoundedCornerShape(8.dp))
                     .padding(horizontal = 10.dp, vertical = 4.dp)
             )
+            if(report.responseStatus == ResponseStatus.APPROVED){
+                Text(
+                    text = "Export PDF",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd) // This is now a direct child of Box
+                        .padding(8.dp)
+                        .background(SafetyYellow, shape = RoundedCornerShape(8.dp))
+                        .padding(horizontal = 10.dp, vertical = 4.dp)
+                )
+            }
         }
     }
 }

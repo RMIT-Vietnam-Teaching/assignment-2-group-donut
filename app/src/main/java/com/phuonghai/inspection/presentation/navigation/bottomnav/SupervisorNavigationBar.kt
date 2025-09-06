@@ -12,15 +12,21 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import androidx.navigation.NavController
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.donut.assignment2.presentation.supervisor.history.SupervisorHistoryScreen
 import com.donut.assignment2.presentation.supervisor.map.SupervisorMapScreen
 import com.donut.assignment2.presentation.supervisor.profile.SupervisorProfileScreen
 import com.phuonghai.inspection.presentation.home.supervisor.SupervisorDashboardScreen
 import com.phuonghai.inspection.presentation.navigation.Screen
+import com.phuonghai.inspection.presentation.supervisor.chatbox.SupervisorChatBoxScreen
+import com.phuonghai.inspection.presentation.supervisor.chatbox.SupervisorChatDetailScreen
+import com.phuonghai.inspection.presentation.supervisor.report.SupervisorReportDetailScreen
 import com.phuonghai.inspection.presentation.supervisor.task.SupervisorTaskScreen
 
 enum class SupervisorDestination(
@@ -41,14 +47,14 @@ enum class SupervisorDestination(
 fun SupervisorNavHost(
     navController: NavHostController,
     startDestination: SupervisorDestination,
-    rootNavController: androidx.navigation.NavController,
+    rootNavController: NavController,
     modifier: Modifier = Modifier
 ) {
     NavHost(navController, startDestination = startDestination.route) {
         SupervisorDestination.entries.forEach { destination ->
             composable(destination.route) {
                 when (destination) {
-                    SupervisorDestination.DASHBOARD -> SupervisorDashboardScreen()
+                    SupervisorDestination.DASHBOARD -> SupervisorDashboardScreen(navController = navController)
                     SupervisorDestination.TASK -> SupervisorTaskScreen()
                     SupervisorDestination.HISTORY -> SupervisorHistoryScreen(navController = navController)
                     SupervisorDestination.MAP -> SupervisorMapScreen(navController = navController)
@@ -57,6 +63,21 @@ fun SupervisorNavHost(
                     )
                 }
             }
+
+        }
+        composable(Screen.SupervisorReportDetailScreen.route + "/{reportId}") {
+            backStackEntry ->
+            val reportId = backStackEntry.arguments?.getString("reportId")
+            if (reportId != null) {
+                SupervisorReportDetailScreen(reportId = reportId, navController = navController)
+            }
+        }
+        composable(Screen.SupervisorChatBoxScreen.route){
+            SupervisorChatBoxScreen(navController = navController)
+        }
+        composable(Screen.SupervisorChatDetailScreen.route +"/{inspectorId}") { backStackEntry ->
+            val inspectorId = backStackEntry.arguments?.getString("inspectorId")
+            SupervisorChatDetailScreen(inspectorId = inspectorId ?: "", navController = navController)
         }
     }
 }

@@ -12,6 +12,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import androidx.navigation.NavController
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -44,7 +45,7 @@ enum class InspectorDestination(
 fun InspectorNavHost(
     navController: NavHostController,
     startDestination: InspectorDestination,
-    rootNavController: androidx.navigation.NavController,   // <-- thêm
+    rootNavController: NavController,   // <-- thêm
     modifier: Modifier = Modifier
 ) {
     NavHost(navController, startDestination = startDestination.route) {

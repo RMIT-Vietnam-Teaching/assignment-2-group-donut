@@ -24,4 +24,9 @@ sealed class Screen(val route: String) {
     object SupervisorHistoryScreen : Screen("supervisor_history")
     object SupervisorMapScreen : Screen("Supervisor_map")
     object SupervisorProfileScreen: Screen("supervisor_profile")
+
+    object SupervisorReportDetailScreen : Screen("supervisor_report_detail")
+    object SupervisorChatBoxScreen: Screen("supervisor_chat_box")
+    object SupervisorChatDetailScreen: Screen("supervisor_chat_detail")
+
 }

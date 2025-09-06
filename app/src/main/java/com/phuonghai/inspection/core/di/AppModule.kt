@@ -15,6 +15,7 @@ import com.phuonghai.inspection.domain.repository.IBranchRepository
 import com.phuonghai.inspection.domain.repository.IReportRepository
 import com.phuonghai.inspection.domain.repository.ITaskRepository
 import com.phuonghai.inspection.domain.repository.IUserRepository
+import com.phuonghai.inspection.domain.usecase.auth.SignOutUseCase
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -81,7 +82,7 @@ object AppModule {
     @Singleton
     fun provideSignOutUseCase(
         authRepository: IAuthRepository
-    ): com.phuonghai.inspection.domain.usecase.auth.SignOutUseCase {
-        return com.phuonghai.inspection.domain.usecase.auth.SignOutUseCase(authRepository)
+    ): SignOutUseCase {
+        return SignOutUseCase(authRepository)
     }
 }
