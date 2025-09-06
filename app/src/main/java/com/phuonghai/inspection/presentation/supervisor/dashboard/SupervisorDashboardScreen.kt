@@ -6,10 +6,12 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.Chat
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.SpanStyle
@@ -20,8 +22,11 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavController
 import com.phuonghai.inspection.domain.model.Report
 import com.phuonghai.inspection.domain.model.User
+import com.phuonghai.inspection.presentation.generalUI.ButtonUI
+import com.phuonghai.inspection.presentation.navigation.Screen
 import com.phuonghai.inspection.presentation.supervisor.dashboard.SupervisorDashboardViewModel
 import com.phuonghai.inspection.presentation.supervisor.dashboard.TeamStatistics
 import com.phuonghai.inspection.presentation.theme.*
@@ -31,7 +36,8 @@ import java.util.Locale
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SupervisorDashboardScreen(
-    viewModel: SupervisorDashboardViewModel = hiltViewModel()
+    viewModel: SupervisorDashboardViewModel = hiltViewModel(),
+    navController: NavController
 ) {
 
     val userState by viewModel.user.collectAsState()
@@ -39,10 +45,29 @@ fun SupervisorDashboardScreen(
     val statisticState by viewModel.statistic.collectAsState()
     val isLoadingState by viewModel.isLoading.collectAsState()
 
+    LaunchedEffect(Unit) {
+        viewModel.loadUser()
+        viewModel.loadReports()
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Supervisor Dashboard", color = Color.White) },
+                title = {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        modifier = Modifier.fillMaxWidth()
+                    ){
+                        Text("Supervisor Dashboard", color = Color.White)
+                        ButtonUI(
+                            text = "Chat",
+                            onClick = {
+                                navController.navigate(Screen.SupervisorChatBoxScreen.route)
+                            },
+                            modifier = Modifier.clip(RoundedCornerShape(50.dp))
+                        )
+                    }},
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = DarkCharcoal),
             )
         },
@@ -85,7 +110,8 @@ fun SupervisorDashboardScreen(
                             },
                             onReject = {
                                 viewModel.rejectReport(it)
-                            }
+                            },
+                            navController = navController
                         )
                     }
                 }
@@ -189,7 +215,8 @@ fun TeamStatCard(label: String, count: Int, color: Color) {
 fun PendingReviewsSection(
     pendingReviews: List<Report>,
     onApprove: (String) -> Unit,
-    onReject: (String) -> Unit
+    onReject: (String) -> Unit,
+    navController: NavController
 ) {
     var showAll by remember { mutableStateOf(false) }
     val reportsToShow = if (showAll) pendingReviews else pendingReviews.take(5)
@@ -218,7 +245,8 @@ fun PendingReviewsSection(
                 PendingReportCard(
                     report = report,
                     onApprove = { onApprove(report.reportId) },
-                    onReject = { onReject(report.reportId) }
+                    onReject = { onReject(report.reportId) },
+                    navController = navController
                 )
             }
 
@@ -243,12 +271,16 @@ fun PendingReviewsSection(
 fun PendingReportCard(
     report: Report,
     onApprove: () -> Unit,
-    onReject: () -> Unit
+    onReject: () -> Unit,
+    navController: NavController
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp),
+        onClick = {
+            navController.navigate(Screen.SupervisorReportDetailScreen.route + "/${report.reportId}")
+        },
         colors = CardDefaults.cardColors(containerColor = Color(0xFF333333)),
         shape = RoundedCornerShape(8.dp)
     ) {
@@ -334,7 +366,7 @@ fun PendingReportCard(
                     .background(
                         color = when (report.priority.name) {
                             "HIGH" -> Color(0xFFD32F2F)
-                            "MEDIUM" -> Color(0xFFFFA000)
+                            "NORMAL" -> Color.Gray
                             "LOW" -> Color(0xFF388E3C)
                             else -> Color.Gray
                         },
