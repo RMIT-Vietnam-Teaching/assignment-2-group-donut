@@ -9,4 +9,5 @@ interface ITaskRepository {
     suspend fun getTasksByInspectorId(inspectorId: String): Result<List<Task>>
     suspend fun updateTaskStatus(taskId: String, status: TaskStatus): Result<Unit>
     suspend fun getTasksByBranch(branchId: String): Result<List<Task>>
+    suspend fun getTaskIdByReportId(reportId: String): Result<String>
 }

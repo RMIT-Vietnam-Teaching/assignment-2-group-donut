@@ -12,6 +12,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import androidx.navigation.NavController
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -23,7 +24,9 @@ import com.phuonghai.inspection.presentation.home.inspector.InspectorDashboardSc
 import com.phuonghai.inspection.presentation.home.inspector.InspectorNewReportScreen
 import com.phuonghai.inspection.presentation.home.inspector.InspectorNotificationScreen
 import com.phuonghai.inspection.presentation.home.inspector.InspectorProfileScreen
+import com.phuonghai.inspection.presentation.inspector.chatbox.InspectorChatDetailScreen
 import com.phuonghai.inspection.presentation.inspector.task.InspectorTaskScreen
+
 import com.phuonghai.inspection.presentation.navigation.Screen
 
 enum class InspectorDestination(
@@ -44,14 +47,14 @@ enum class InspectorDestination(
 fun InspectorNavHost(
     navController: NavHostController,
     startDestination: InspectorDestination,
-    rootNavController: androidx.navigation.NavController,   // <-- thêm
+    rootNavController: NavController,   // <-- thêm
     modifier: Modifier = Modifier
 ) {
     NavHost(navController, startDestination = startDestination.route) {
         InspectorDestination.entries.forEach { destination ->
             composable(destination.route) {
                 when (destination) {
-                    InspectorDestination.DASHBOARD -> InspectorDashboardScreen()
+                    InspectorDestination.DASHBOARD -> InspectorDashboardScreen(navController = navController)
                     InspectorDestination.Task -> InspectorTaskScreen(navController = navController)
                     InspectorDestination.HISTORY -> InspectorHistoryReportScreen(navController = navController)
                     InspectorDestination.NOTIFICATIONS -> InspectorNotificationScreen()
@@ -84,6 +87,10 @@ fun InspectorNavHost(
                 reportId = reportId
             )
         }
+        composable(route = Screen.InspectorChatDetailScreen.route) {
+            InspectorChatDetailScreen(navController = navController)
+        }
+
     }
 }
 

@@ -54,7 +54,6 @@ import com.phuonghai.inspection.presentation.home.inspector.profile.InspectorPro
 
 @Composable
 fun InspectorProfileScreen(modifier: Modifier = Modifier, navController: NavController) {
-    var isChatBoxOpen by remember { mutableStateOf(false) }
     var showLogoutDialog by remember { mutableStateOf(false) }
 
     val viewModel: InspectorProfileViewModel = hiltViewModel()
@@ -62,7 +61,6 @@ fun InspectorProfileScreen(modifier: Modifier = Modifier, navController: NavCont
     val isLoading by viewModel.isLoading.collectAsState()
     val signOutSuccess by viewModel.signOutSuccess.collectAsState() // ✅ ADD THIS
 
-    var message by remember { mutableStateOf("") }
     val context = LocalContext.current
 
     LaunchedEffect(Unit) {
@@ -186,12 +184,6 @@ fun InspectorProfileScreen(modifier: Modifier = Modifier, navController: NavCont
                             icon = Icons.AutoMirrored.Outlined.Logout,
                             modifier = modifier.clip(RoundedCornerShape(50.dp))
                         )
-                        ButtonUI(
-                            text = "Chat Box",
-                            onClick = { isChatBoxOpen = true },
-                            icon = Icons.Outlined.Chat,
-                            modifier = modifier.clip(RoundedCornerShape(50.dp))
-                        )
                     }
                 }
 
@@ -232,99 +224,6 @@ fun InspectorProfileScreen(modifier: Modifier = Modifier, navController: NavCont
                             }
                         },
                         shape = RoundedCornerShape(16.dp),
-                        containerColor = Color.White
-                    )
-                }
-
-                // Chat Dialog (existing code remains same)
-                if (isChatBoxOpen) {
-                    AlertDialog(
-                        onDismissRequest = { isChatBoxOpen = false },
-                        confirmButton = {},
-                        dismissButton = {
-                            TextButton(onClick = { isChatBoxOpen = false }) {
-                                Text("Close", color = MaterialTheme.colorScheme.primary)
-                            }
-                        },
-                        title = {
-                            Text(
-                                text = "🗨️ Chat Support",
-                                color = MaterialTheme.colorScheme.primary,
-                                fontSize = 20.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                        },
-                        text = {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(500.dp)
-                                    .padding(top = 8.dp)
-                                    .background(Color.White, shape = RoundedCornerShape(12.dp))
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .fillMaxWidth()
-                                        .clip(RoundedCornerShape(8.dp))
-                                        .background(Color(0xFFF6F6F6))
-                                        .padding(12.dp)
-                                ) {
-                                    Text(
-                                        text = "Welcome to the chat! How can I assist you today?",
-                                        color = Color.DarkGray,
-                                        fontSize = 16.sp
-                                    )
-                                }
-
-                                Spacer(modifier = Modifier.height(16.dp))
-
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 4.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    OutlinedTextField(
-                                        value = message,
-                                        onValueChange = { message = it },
-                                        placeholder = {
-                                            Text(
-                                                "Write reply...",
-                                                color = Color.Gray
-                                            )
-                                        },
-                                        modifier = Modifier.fillMaxWidth(),
-                                        shape = RoundedCornerShape(24.dp),
-                                        textStyle = TextStyle(
-                                            color = Color.Black,
-                                            fontWeight = FontWeight.Medium,
-                                            fontSize = 18.sp
-                                        ),
-                                        colors = TextFieldDefaults.colors(
-                                            focusedContainerColor = Color.White,
-                                            unfocusedContainerColor = Color.White,
-                                            focusedTextColor = Color.Black,
-                                            unfocusedTextColor = Color.Black,
-                                            cursorColor = Color.Black,
-                                            focusedIndicatorColor = Color.Black,
-                                            unfocusedIndicatorColor = Color.Black
-                                        ),
-                                        trailingIcon = {
-                                            IconButton(onClick = {
-                                                message = ""
-                                            }) {
-                                                Icon(
-                                                    Icons.Outlined.Send,
-                                                    contentDescription = "Send"
-                                                )
-                                            }
-                                        }
-                                    )
-                                }
-                            }
-                        },
-                        shape = RoundedCornerShape(20.dp),
                         containerColor = Color.White
                     )
                 }

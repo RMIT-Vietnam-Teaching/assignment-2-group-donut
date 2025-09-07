@@ -2,19 +2,23 @@ package com.phuonghai.inspection.core.di
 
 import com.google.firebase.Firebase
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
 import com.google.firebase.storage.storage
 import com.phuonghai.inspection.data.repository.AuthRepositoryImpl
 import com.phuonghai.inspection.data.repository.BranchRepositoryImpl
+import com.phuonghai.inspection.data.repository.ChatMessageRepositoryImpl
 import com.phuonghai.inspection.data.repository.ReportRepositoryImpl
 import com.phuonghai.inspection.data.repository.TaskRepositoryImpl
 import com.phuonghai.inspection.data.repository.UserRepositoryImpl
 import com.phuonghai.inspection.domain.repository.IAuthRepository
 import com.phuonghai.inspection.domain.repository.IBranchRepository
+import com.phuonghai.inspection.domain.repository.IChatMessageRepository
 import com.phuonghai.inspection.domain.repository.IReportRepository
 import com.phuonghai.inspection.domain.repository.ITaskRepository
 import com.phuonghai.inspection.domain.repository.IUserRepository
+import com.phuonghai.inspection.domain.usecase.auth.SignOutUseCase
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -45,6 +49,10 @@ object AppModule {
     ): IAuthRepository {
         return AuthRepositoryImpl(auth, firestore)
     }
+
+    @Provides
+    @Singleton
+    fun provideFirebaseDatabase(): FirebaseDatabase = FirebaseDatabase.getInstance("https://field-reporting-app-15810-default-rtdb.asia-southeast1.firebasedatabase.app/")
 
     @Provides
     @Singleton
@@ -81,7 +89,15 @@ object AppModule {
     @Singleton
     fun provideSignOutUseCase(
         authRepository: IAuthRepository
-    ): com.phuonghai.inspection.domain.usecase.auth.SignOutUseCase {
-        return com.phuonghai.inspection.domain.usecase.auth.SignOutUseCase(authRepository)
+    ): SignOutUseCase {
+        return SignOutUseCase(authRepository)
+    }
+
+    @Provides
+    @Singleton
+    fun provideChatMessageRepository(
+        database: FirebaseDatabase
+    ): IChatMessageRepository{
+        return ChatMessageRepositoryImpl(database)
     }
 }
