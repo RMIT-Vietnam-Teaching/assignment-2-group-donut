@@ -9,6 +9,7 @@ import com.phuonghai.inspection.domain.common.Priority
 import com.phuonghai.inspection.domain.model.*
 import com.phuonghai.inspection.domain.repository.IAuthRepository
 import com.phuonghai.inspection.domain.repository.IReportRepository
+import com.phuonghai.inspection.data.repository.OfflineReportRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -62,8 +63,6 @@ class NewReportViewModel @Inject constructor(
         Log.d(TAG, "Set taskId: $taskId")
     }
 
-    // Thay thế phương thức loadDraftReport trong NewReportViewModel.kt
-
     fun loadDraftReport(reportId: String) {
         Log.d(TAG, "Loading draft report: $reportId")
 
@@ -79,7 +78,7 @@ class NewReportViewModel @Inject constructor(
                     onSuccess = { report ->
                         if (report != null) {
                             Log.d(TAG, "Draft report loaded successfully: ${report.title}")
-                            Log.d(TAG, "Report data: $report") // ✅ DEBUG LOG
+                            Log.d(TAG, "Report data: $report")
 
                             _uiState.value = _uiState.value.copy(
                                 isLoading = false,
@@ -137,7 +136,7 @@ class NewReportViewModel @Inject constructor(
                             _uiState.value = _uiState.value.copy(
                                 isLoading = false,
                                 currentTaskId = taskId,
-                                currentReportId = "", // ✅ RESET REPORT ID
+                                currentReportId = "",
                                 draftData = null
                             )
                         }
@@ -147,7 +146,7 @@ class NewReportViewModel @Inject constructor(
                         _uiState.value = _uiState.value.copy(
                             isLoading = false,
                             currentTaskId = taskId,
-                            currentReportId = "", // ✅ RESET REPORT ID
+                            currentReportId = "",
                             message = "Error loading draft: ${error.message}"
                         )
                     }
@@ -157,7 +156,7 @@ class NewReportViewModel @Inject constructor(
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     currentTaskId = taskId,
-                    currentReportId = "", // ✅ RESET REPORT ID
+                    currentReportId = "",
                     message = "Error loading draft: ${e.message}"
                 )
             }
@@ -184,28 +183,6 @@ class NewReportViewModel @Inject constructor(
             )
 
             try {
-                // Upload media files...
-                val imageUrls = mutableListOf<String>()
-                if (imageUris.isNotEmpty()) {
-                    imageUris.forEach { uri ->
-                        val result = reportRepository.uploadImage(uri)
-                        if (result.isSuccess) {
-                            imageUrls.add(result.getOrNull() ?: "")
-                        } else {
-                            throw result.exceptionOrNull() ?: Exception("Unknown image upload error")
-                        }
-                    }
-                }
-
-                val videoUrl = videoUri?.let { uri ->
-                    val result = reportRepository.uploadVideo(uri)
-                    if (result.isSuccess) {
-                        result.getOrNull()
-                    } else {
-                        throw result.exceptionOrNull() ?: Exception("Unknown video upload error")
-                    }
-                }
-
                 val existingReportId = _uiState.value.currentReportId
                 val taskId = _uiState.value.currentTaskId
 
@@ -217,28 +194,38 @@ class NewReportViewModel @Inject constructor(
                     assignStatus = status,
                     priority = priority,
                     address = address,
-                    imageUrl = imageUrls.firstOrNull() ?: "",
-                    videoUrl = videoUrl ?: "",
+                    imageUrl = "", // Will be set by repository
+                    videoUrl = "", // Will be set by repository
                     taskId = taskId
                 )
 
+                // ✅ Use the new offline-capable method
                 val result = if (existingReportId.isNotEmpty()) {
                     Log.d(TAG, "Converting existing draft to submitted report: $existingReportId")
                     val updatedReport = report.copy(reportId = existingReportId)
-                    reportRepository.updateReport(updatedReport)
+
+                    // For offline repository, we need to handle media differently
+                    if (reportRepository is OfflineReportRepository) {
+                        reportRepository.createReportWithMedia(updatedReport, imageUris, videoUri)
+                    } else {
+                        // Fallback to old method for online-only
+                        uploadMediaAndUpdateReport(updatedReport, imageUris, videoUri)
+                    }
                 } else {
                     Log.d(TAG, "Creating new report with status: $status")
-                    reportRepository.createReport(report)
+
+                    if (reportRepository is OfflineReportRepository) {
+                        reportRepository.createReportWithMedia(report, imageUris, videoUri)
+                    } else {
+                        // Fallback to old method for online-only
+                        uploadMediaAndCreateReport(report, imageUris, videoUri)
+                    }
                 }
 
                 if (result.isSuccess) {
-                    val reportId = if (existingReportId.isNotEmpty()) {
-                        existingReportId
-                    } else {
-                        result.getOrNull()?.toString() ?: ""
-                    }
+                    val reportId = result.getOrNull()?.toString() ?: existingReportId
 
-                    // ✅ XÓA DRAFT SAU KHI SUBMIT THÀNH CÔNG
+                    // ✅ Delete draft after successful submit
                     deleteDraftAfterSubmit(taskId, existingReportId)
 
                     _uiState.value = _uiState.value.copy(
@@ -246,7 +233,7 @@ class NewReportViewModel @Inject constructor(
                         actionType = null,
                         message = "Report submitted successfully! ID: $reportId",
                         shouldNavigateBack = true,
-                        currentReportId = "", // Clear vì đã submit
+                        currentReportId = "", // Clear since submitted
                         draftData = null // Clear draft data
                     )
                     Log.d(TAG, "Report submitted successfully: $reportId with status: $status")
@@ -265,6 +252,81 @@ class NewReportViewModel @Inject constructor(
                     message = "Error submitting report: ${e.message}"
                 )
             }
+        }
+    }
+
+    // ✅ Helper method for backward compatibility with online-only repository
+    private suspend fun uploadMediaAndCreateReport(
+        report: Report,
+        imageUris: List<Uri>,
+        videoUri: Uri?
+    ): Result<String> {
+        val imageUrls = mutableListOf<String>()
+        if (imageUris.isNotEmpty()) {
+            imageUris.forEach { uri ->
+                val result = reportRepository.uploadImage(uri)
+                if (result.isSuccess) {
+                    imageUrls.add(result.getOrNull() ?: "")
+                } else {
+                    throw result.exceptionOrNull() ?: Exception("Unknown image upload error")
+                }
+            }
+        }
+
+        val videoUrl = videoUri?.let { uri ->
+            val result = reportRepository.uploadVideo(uri)
+            if (result.isSuccess) {
+                result.getOrNull()
+            } else {
+                throw result.exceptionOrNull() ?: Exception("Unknown video upload error")
+            }
+        }
+
+        val reportWithMedia = report.copy(
+            imageUrl = imageUrls.firstOrNull() ?: "",
+            videoUrl = videoUrl ?: ""
+        )
+
+        return reportRepository.createReport(reportWithMedia)
+    }
+
+    // ✅ Helper method for backward compatibility with online-only repository
+    private suspend fun uploadMediaAndUpdateReport(
+        report: Report,
+        imageUris: List<Uri>,
+        videoUri: Uri?
+    ): Result<String> {
+        val imageUrls = mutableListOf<String>()
+        if (imageUris.isNotEmpty()) {
+            imageUris.forEach { uri ->
+                val result = reportRepository.uploadImage(uri)
+                if (result.isSuccess) {
+                    imageUrls.add(result.getOrNull() ?: "")
+                } else {
+                    throw result.exceptionOrNull() ?: Exception("Unknown image upload error")
+                }
+            }
+        }
+
+        val videoUrl = videoUri?.let { uri ->
+            val result = reportRepository.uploadVideo(uri)
+            if (result.isSuccess) {
+                result.getOrNull()
+            } else {
+                throw result.exceptionOrNull() ?: Exception("Unknown video upload error")
+            }
+        }
+
+        val reportWithMedia = report.copy(
+            imageUrl = imageUrls.firstOrNull() ?: "",
+            videoUrl = videoUrl ?: ""
+        )
+
+        val updateResult = reportRepository.updateReport(reportWithMedia)
+        return if (updateResult.isSuccess) {
+            Result.success(reportWithMedia.reportId)
+        } else {
+            updateResult.map { reportWithMedia.reportId }
         }
     }
 
@@ -294,64 +356,49 @@ class NewReportViewModel @Inject constructor(
 
                 Log.d(TAG, "Existing reportId: $existingReportId, taskId: $finalTaskId")
 
-                // Upload media files nếu có
-                val imageUrls = mutableListOf<String>()
-                if (imageUris.isNotEmpty()) {
-                    imageUris.forEach { uri ->
-                        val result = reportRepository.uploadImage(uri)
-                        if (result.isSuccess) {
-                            imageUrls.add(result.getOrNull() ?: "")
-                        } else {
-                            Log.w(TAG, "Failed to upload image: ${result.exceptionOrNull()?.message}")
-                        }
-                    }
-                }
-
-                val videoUrl = videoUri?.let { uri ->
-                    val result = reportRepository.uploadVideo(uri)
-                    if (result.isSuccess) {
-                        result.getOrNull()
-                    } else {
-                        Log.w(TAG, "Failed to upload video: ${result.exceptionOrNull()?.message}")
-                        null
-                    }
-                }
-
                 val report = createReport(
                     title = title,
                     description = description,
                     score = score,
                     type = type,
-                    assignStatus = AssignStatus.DRAFT, // ✅ LUÔN LÀ DRAFT CHO SAVE AS DRAFT
+                    assignStatus = AssignStatus.DRAFT, // ✅ Always DRAFT for save as draft
                     priority = priority,
                     address = address,
-                    imageUrl = imageUrls.firstOrNull() ?: "",
-                    videoUrl = videoUrl ?: "",
+                    imageUrl = "", // Will be handled by repository
+                    videoUrl = "", // Will be handled by repository
                     taskId = finalTaskId
                 )
 
                 val result = if (existingReportId.isNotEmpty()) {
                     Log.d(TAG, "Updating existing draft: $existingReportId")
                     val updatedReport = report.copy(reportId = existingReportId)
-                    reportRepository.updateReport(updatedReport)
+
+                    if (reportRepository is OfflineReportRepository) {
+                        reportRepository.createReportWithMedia(updatedReport, imageUris, videoUri)
+                    } else {
+                        // Fallback for online-only repository
+                        uploadMediaAndUpdateReport(updatedReport, imageUris, videoUri)
+                    }
                 } else {
                     Log.d(TAG, "Creating new draft")
-                    reportRepository.createReport(report)
+
+                    if (reportRepository is OfflineReportRepository) {
+                        reportRepository.createReportWithMedia(report, imageUris, videoUri)
+                    } else {
+                        // Fallback for online-only repository
+                        uploadMediaAndCreateReport(report, imageUris, videoUri)
+                    }
                 }
 
                 if (result.isSuccess) {
-                    val savedReportId = if (existingReportId.isNotEmpty()) {
-                        existingReportId
-                    } else {
-                        result.getOrNull()?.toString() ?: ""
-                    }
+                    val savedReportId = result.getOrNull()?.toString() ?: existingReportId
 
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
                         actionType = null,
                         currentReportId = savedReportId,
                         message = "Draft saved successfully! ID: $savedReportId",
-                        shouldNavigateBack = true // ✅ THÊM FLAG ĐỂ NAVIGATE
+                        shouldNavigateBack = true // ✅ Navigate back after save
                     )
                     Log.d(TAG, "Draft saved successfully: $savedReportId")
                 } else {
@@ -371,6 +418,7 @@ class NewReportViewModel @Inject constructor(
             }
         }
     }
+
     private suspend fun deleteDraftAfterSubmit(taskId: String, currentReportId: String) {
         try {
             if (currentReportId.isNotEmpty()) {
@@ -398,6 +446,7 @@ class NewReportViewModel @Inject constructor(
             // Không throw error vì submit đã thành công
         }
     }
+
     private fun createReport(
         title: String,
         description: String,
@@ -481,6 +530,7 @@ class NewReportViewModel @Inject constructor(
     ): Boolean {
         return title.isNotBlank() || description.isNotBlank()
     }
+
     fun deleteDraftAndCreateNew(taskId: String) {
         viewModelScope.launch {
             try {
@@ -502,10 +552,10 @@ class NewReportViewModel @Inject constructor(
             }
         }
     }
+
     fun clearNavigationFlag() {
         _uiState.value = _uiState.value.copy(shouldNavigateBack = false)
     }
-
 }
 
 data class NewReportUiState(

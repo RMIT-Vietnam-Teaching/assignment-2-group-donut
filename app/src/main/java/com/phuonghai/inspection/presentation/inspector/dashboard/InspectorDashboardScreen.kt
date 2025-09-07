@@ -22,6 +22,8 @@ import androidx.navigation.NavController
 import com.phuonghai.inspection.domain.model.User
 import com.phuonghai.inspection.presentation.generalUI.ButtonUI
 import com.phuonghai.inspection.presentation.navigation.Screen
+import com.phuonghai.inspection.presentation.home.inspector.InspectorDashboardViewModel
+import com.phuonghai.inspection.presentation.components.SyncStatusComponent
 import com.phuonghai.inspection.presentation.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -136,6 +138,11 @@ fun DashboardContent(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
+            // ✅ Add Sync Status Component
+            item {
+                SyncStatusComponent()
+            }
+
             item {
                 InspectorInfoCard(user)
             }

@@ -40,6 +40,10 @@ android {
     buildFeatures {
         compose = true
     }
+
+    kapt {
+        correctErrorTypes = true
+    }
 }
 
 dependencies {
@@ -87,6 +91,10 @@ dependencies {
     kapt("com.google.dagger:hilt-android-compiler:2.51.1")
     implementation("androidx.hilt:hilt-navigation-compose:1.2.0")
 
+    // ✅ Thêm Hilt Work để fix WorkManager + Hilt
+    implementation("androidx.hilt:hilt-work:1.2.0")
+    kapt("androidx.hilt:hilt-compiler:1.2.0")
+
     // Navigation
     implementation("androidx.navigation:navigation-compose:2.8.0")
 
@@ -108,4 +116,14 @@ dependencies {
     // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.0")
+
+    // ✅ Room Database for offline storage
+    val room_version = "2.6.1"
+    implementation("androidx.room:room-runtime:$room_version")
+    implementation("androidx.room:room-ktx:$room_version")
+    kapt("androidx.room:room-compiler:$room_version")
+
+    // ✅ Network monitoring
+    implementation("androidx.work:work-runtime-ktx:2.9.0")
+    implementation("androidx.startup:startup-runtime:1.1.1")
 }
