@@ -1,4 +1,5 @@
-package com.phuonghai.inspection.presentation.supervisor.chatbox
+package com.phuonghai.inspection.presentation.inspector.chatbox
+
 
 
 import androidx.compose.foundation.background
@@ -11,21 +12,17 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.outlined.Send
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldDefaults
@@ -57,21 +54,21 @@ import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SupervisorChatDetailScreen(
-    inspectorId: String,
-    inspectorName: String,
+fun InspectorChatDetailScreen(
     navController: NavController,
-    viewModel: SupervisorChatDetailViewModel = hiltViewModel(),
+    viewModel: InspectorChatDetailViewModel = hiltViewModel(),
 ) {
-    val supervisorId = FirebaseAuth.getInstance().currentUser?.uid ?: return
+    val inspectorId = FirebaseAuth.getInstance().currentUser?.uid
     var inputMessage by remember { mutableStateOf("") }
     val isLoading by viewModel.isLoading.collectAsState()
     val messages by viewModel.messages.collectAsState()
-
+    val supervisorName by viewModel.supervisorName.collectAsState()
 
     // Load messages once when screen appears
-    LaunchedEffect(inspectorId) {
-        viewModel.getMessages(inspectorId)
+    LaunchedEffect(Unit) {
+        if (inspectorId != null) {
+            viewModel.getMessages(inspectorId)
+        }
     }
     Scaffold(
         topBar = {
@@ -88,7 +85,7 @@ fun SupervisorChatDetailScreen(
                             )
                         }
                         Text(
-                            "Chat with $inspectorName",
+                            "Chat with boss: $supervisorName",
                             color = Color.White,
                             fontWeight = FontWeight.Bold
                         )
@@ -124,9 +121,9 @@ fun SupervisorChatDetailScreen(
                 ) {
                     items(messages.size) { index ->
                         val message = messages[messages.size - 1 - index] // newest at bottom
-                        ChatBubble(
+                        ChatBubble1(
                             message = message,
-                            isSupervisor = message.senderId == supervisorId
+                            isInspector = message.senderId == inspectorId
                         )
                     }
                 }
@@ -174,16 +171,10 @@ fun SupervisorChatDetailScreen(
                                 IconButton(
                                     onClick = {
                                         if (inputMessage.isNotBlank()) {
-                                            viewModel.sendMessage(
-                                                inspectorId,
-                                                ChatMessage(
-                                                    senderId = supervisorId,
-                                                    receiverId = inspectorId,
-                                                    text = inputMessage,
-                                                    timestamp = System.currentTimeMillis()
-                                                )
-                                            )
-                                            inputMessage = "" // clear only after sending
+                                            inspectorId?.let {
+                                                viewModel.sendMessage(it, inputMessage)
+                                                inputMessage = "" // clear only after sending
+                                            }
                                         }
                                     },
                                     enabled = inputMessage.isNotBlank()
@@ -194,6 +185,7 @@ fun SupervisorChatDetailScreen(
                                     )
                                 }
                             }
+
                         )
                     }
                 }
@@ -202,7 +194,7 @@ fun SupervisorChatDetailScreen(
     }
 }
 @Composable
-fun ChatBubble(message: ChatMessage, isSupervisor: Boolean) {
+fun ChatBubble1(message: ChatMessage, isInspector: Boolean) {
     // 🔹 Convert millis → formatted string
     val formattedTime = remember(message.timestamp) {
         if (message.timestamp > 0) {
@@ -215,12 +207,12 @@ fun ChatBubble(message: ChatMessage, isSupervisor: Boolean) {
 
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = if (isSupervisor) Arrangement.End else Arrangement.Start
+        horizontalArrangement = if (isInspector) Arrangement.End else Arrangement.Start
     ) {
         Column(
             modifier = Modifier
                 .background(
-                    color = if (isSupervisor) SafetyYellow else Color(0xFF2C2C2C),
+                    color = if (isInspector) SafetyYellow else Color(0xFF2C2C2C),
                     shape = RoundedCornerShape(12.dp)
                 )
                 .padding(10.dp)
@@ -228,14 +220,14 @@ fun ChatBubble(message: ChatMessage, isSupervisor: Boolean) {
         ) {
             Text(
                 text = message.text,
-                color = if (isSupervisor) Color.Black else Color.White,
+                color = if (isInspector) Color.Black else Color.White,
                 fontSize = 16.sp
             )
             Spacer(Modifier.height(2.dp))
             Text(
                 text = formattedTime,
                 fontSize = 12.sp,
-                color = if (isSupervisor) Color.DarkGray else Color.LightGray
+                color = if (isInspector) Color.DarkGray else Color.LightGray
             )
         }
     }

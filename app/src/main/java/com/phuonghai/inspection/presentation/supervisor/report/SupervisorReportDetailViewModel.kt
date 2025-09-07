@@ -3,15 +3,21 @@ package com.phuonghai.inspection.presentation.supervisor.report
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.firebase.auth.FirebaseAuth
+import com.phuonghai.inspection.domain.model.ChatMessage
 import com.phuonghai.inspection.domain.model.Report
 import com.phuonghai.inspection.domain.model.ResponseStatus
 import com.phuonghai.inspection.domain.model.TaskStatus
+import com.phuonghai.inspection.domain.model.User
+import com.phuonghai.inspection.domain.repository.IChatMessageRepository
 import com.phuonghai.inspection.domain.usecase.GetReportUseCase
 import com.phuonghai.inspection.domain.usecase.GetTaskIdByReportIdUseCase
+import com.phuonghai.inspection.domain.usecase.GetUserInformationUseCase
 import com.phuonghai.inspection.domain.usecase.UpdateResponseStatusReportUseCase
 import com.phuonghai.inspection.domain.usecase.UpdateTaskStatusUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -21,14 +27,25 @@ class SupervisorReportDetailViewModel @Inject constructor(
     private val getReportUseCase: GetReportUseCase,
     private val updateResponseStatusReportUseCase: UpdateResponseStatusReportUseCase,
     private val getTaskIdByReportIdUseCase: GetTaskIdByReportIdUseCase,
-    private val updateTaskStatusUseCase: UpdateTaskStatusUseCase
+    private val updateTaskStatusUseCase: UpdateTaskStatusUseCase,
+    private val chatRepository: IChatMessageRepository,
+    private val getUserInformationUseCase: GetUserInformationUseCase
 ) : ViewModel() {
+
+    private val supervisorId = FirebaseAuth.getInstance().currentUser?.uid
+
 
     private val _report = MutableStateFlow<Report?>(null)
     val report = _report.asStateFlow()
 
+    private val _messages = MutableStateFlow<List<ChatMessage>>(emptyList())
+    val messages: StateFlow<List<ChatMessage>> = _messages
+
     private val _isLoading = MutableStateFlow(false)
     val isLoading = _isLoading.asStateFlow()
+
+    private val _inspectorNameForChatting = MutableStateFlow("")
+    val inspectorNameForChatting = _inspectorNameForChatting.asStateFlow()
 
     private val _error = MutableStateFlow<String?>(null)
     val error = _error.asStateFlow()
@@ -81,6 +98,37 @@ class SupervisorReportDetailViewModel @Inject constructor(
             }.onFailure { e ->
                 Log.e("SupervisorDashboardViewModel", "Error rejecting report", e)
             }
+        }
+    }
+
+    fun getMessages(inspectorId: String) {
+        if(supervisorId != null) {
+            loadInspectorNameForChat(inspectorId)
+            viewModelScope.launch {
+                _isLoading.value = true
+                chatRepository.getMessages(supervisorId, inspectorId).collect { messages ->
+                    _messages.value = messages
+                    _isLoading.value = false
+                }
+            }
+        }
+    }
+    fun sendMessage(inspectorId: String, message: ChatMessage) {
+        if(supervisorId != null) {
+            viewModelScope.launch {
+                _isLoading.value = true
+                chatRepository.sendMessage(supervisorId, inspectorId, message)
+                _isLoading.value = false
+            }
+        }
+    }
+    fun loadInspectorNameForChat(inspectorId: String){
+        viewModelScope.launch {
+            _isLoading.value = true
+            val result: Result<User?> = getUserInformationUseCase(inspectorId)
+            val inspector = result.getOrNull()
+            _inspectorNameForChatting.value = inspector?.fullName ?: "Unknown"
+            _isLoading.value = false
         }
     }
 }
