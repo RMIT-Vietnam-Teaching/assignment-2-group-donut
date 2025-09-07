@@ -14,11 +14,15 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.AttachFile
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.Send
 import androidx.compose.material3.Button
@@ -55,12 +59,17 @@ import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
+import com.google.firebase.auth.FirebaseAuth
 import com.phuonghai.inspection.domain.common.Priority
+import com.phuonghai.inspection.domain.model.ChatMessage
+import com.phuonghai.inspection.domain.model.Report
 import com.phuonghai.inspection.domain.model.ResponseStatus
 import com.phuonghai.inspection.presentation.generalUI.ButtonUI
+import com.phuonghai.inspection.presentation.supervisor.chatbox.ChatBubble
 import com.phuonghai.inspection.presentation.theme.DarkCharcoal
 import com.phuonghai.inspection.presentation.theme.SafetyYellow
 import java.text.SimpleDateFormat
+import java.util.Date
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -73,6 +82,8 @@ fun SupervisorReportDetailScreen(
     var showChatPopup by remember { mutableStateOf(false) }
     val reportState by viewModel.report.collectAsState()
     val isLoadingState by viewModel.isLoading.collectAsState()
+    val messages by viewModel.messages.collectAsState()
+    val inspectorNameForChatting by viewModel.inspectorNameForChatting.collectAsState()
     val report = reportState
 
     LaunchedEffect(reportId) {
@@ -102,7 +113,10 @@ fun SupervisorReportDetailScreen(
                         }
                         ButtonUI(
                             text = "Chat With Inspector",
-                            onClick = { showChatPopup = true },
+                            onClick = {
+                                viewModel.getMessages(report?.inspectorId ?: "")
+                                showChatPopup = true
+                            },
                             backgroundColor = SafetyYellow,
                         )
                     }
@@ -213,8 +227,6 @@ fun SupervisorReportDetailScreen(
                         item {
                             InfoRow("Description", report.description)
                             InfoRow("Score", report.score?.toString() ?: "N/A")
-                            InfoRow("Review Notes", report.reviewNotes.ifBlank { "No review yet" })
-                            InfoRow("Reviewed By", report.reviewedBy.ifBlank { "-" })
                         }
                         item{
                             if(report.responseStatus == ResponseStatus.PENDING){
@@ -259,12 +271,16 @@ fun SupervisorReportDetailScreen(
                     }
                 }
                 if (showChatPopup) {
-                    report?.inspectorId?.let {
+                    report?.inspectorId?.let { inspectorId ->
                         ChatPopup(
-                            inspectorId = it,
-                            messages = sampleMessages,
+                            inspectorId = inspectorId,
+                            messages = messages,
                             onDismiss = { showChatPopup = false },
-                            onSendMessage = { msg -> println("Send: $msg") }
+                            onSendMessage = { message ->
+                                viewModel.sendMessage(inspectorId, message)
+                            },
+                            inspectorName = inspectorNameForChatting,
+                            report = report
                         )
                     }
                 }
@@ -284,16 +300,28 @@ fun InfoRow(label: String, value: String) {
 fun ChatPopup(
     onDismiss: () -> Unit,
     inspectorId: String,
-    messages: List<ChatMessage>, // Replace with your ChatMessage model later
-    onSendMessage: (String) -> Unit
+    messages: List<ChatMessage>,
+    onSendMessage: (ChatMessage) -> Unit,
+    inspectorName: String,
+    report: Report
 ) {
-    var newMessage by remember { mutableStateOf("") }
+    var inputMessage by remember { mutableStateOf("") }
+    val supervisorId = FirebaseAuth.getInstance().currentUser?.uid ?: return
+    val listState = rememberLazyListState()
+    var attachReport by remember { mutableStateOf(false) }
+    val dateFormat = SimpleDateFormat("EEE MMM dd yyyy", Locale.getDefault())
+
+    // message template when attaching
+    val attachMessage = "Attach with report:\n" +
+            "Title: ${report.title}\n" +
+            "Address: ${report.address}\n"+
+            "Completed: ${report.completedAt?.toDate()?.let { dateFormat.format(it) } ?: "-"}\n"
 
     Dialog(onDismissRequest = onDismiss) {
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .fillMaxHeight(0.6f), // 60% screen height
+                .fillMaxHeight(0.6f),
             shape = RoundedCornerShape(16.dp),
             colors = CardDefaults.cardColors(containerColor = DarkCharcoal)
         ) {
@@ -308,7 +336,7 @@ fun ChatPopup(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("Chat with $inspectorId", color = Color.White, fontSize = 18.sp)
+                    Text("Chat with $inspectorName", color = Color.White, fontSize = 18.sp)
                     Icon(
                         imageVector = Icons.Default.Close,
                         contentDescription = "Close",
@@ -319,55 +347,58 @@ fun ChatPopup(
 
                 Spacer(Modifier.height(8.dp))
 
-                // Messages list
+                // auto scroll to last message
+                LaunchedEffect(messages.size) {
+                    if (messages.isNotEmpty()) {
+                        listState.animateScrollToItem(messages.size - 1)
+                    }
+                }
+
                 LazyColumn(
+                    state = listState,
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    items(sampleMessages) { msg ->
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 8.dp),
-                            horizontalAlignment = if (msg.sender == "Supervisor") Alignment.End else Alignment.Start
-                        ) {
-                            Text(
-                                text = msg.content,
-                                color = Color.White,
-                                modifier = Modifier
-                                    .background(
-                                        if (msg.sender == "Supervisor") SafetyYellow else Color.Gray,
-                                        shape = RoundedCornerShape(12.dp)
-                                    )
-                                    .padding(8.dp)
-                            )
-                            Text(
-                                text = msg.timestamp,
-                                fontSize = 10.sp,
-                                color = Color.LightGray
-                            )
-                        }
+                    items(messages) { message ->
+                        ChatBubble(
+                            message = message,
+                            isSupervisor = message.senderId == supervisorId
+                        )
                     }
                 }
 
-                // Input field + Send button
+                // show preview of attached report
+                if (attachReport) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(Color.DarkGray.copy(alpha = 0.3f), RoundedCornerShape(16.dp))
+                            .padding(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = attachMessage.trim(),
+                            color = Color.White,
+                            fontSize = 14.sp
+                        )
+                    }
+                    Spacer(Modifier.height(4.dp))
+                }
+
+                // Input area
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp, vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     OutlinedTextField(
-                        value = newMessage,
-                        onValueChange = { newMessage = it },
-                        placeholder = {
-                            Text(
-                                "Write reply...",
-                                color = Color.Gray
-                            )
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth(),
+                        value = inputMessage,
+                        onValueChange = { inputMessage = it },
+                        placeholder = { Text("Write reply...", color = Color.Gray) },
+                        modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(24.dp),
                         textStyle = TextStyle(
                             color = Color.Black,
@@ -386,45 +417,44 @@ fun ChatPopup(
                         trailingIcon = {
                             IconButton(
                                 onClick = {
-                                    newMessage = ""
+                                    if (inputMessage.isNotBlank()) {
+                                        val finalMessage =
+                                            if (attachReport) attachMessage + "Review: " + inputMessage
+                                            else inputMessage
+
+                                        onSendMessage(
+                                            ChatMessage(
+                                                senderId = supervisorId,
+                                                receiverId = inspectorId,
+                                                text = finalMessage,
+                                                timestamp = System.currentTimeMillis()
+                                            )
+                                        )
+
+                                        inputMessage = ""   // clear input
+                                        attachReport = false // reset attach
+                                    }
                                 },
-                                enabled = newMessage.isNotBlank()
+                                enabled = inputMessage.isNotBlank()
                             ) {
                                 Icon(
-                                    Icons.Outlined.Send,
+                                    imageVector = Icons.Outlined.Send,
                                     contentDescription = "Send"
                                 )
                             }
                         }
                     )
-                    Spacer(Modifier.width(8.dp))
-                    Button(
-                        onClick = {
-                            if (newMessage.isNotBlank()) {
-                                onSendMessage(newMessage)
-                                newMessage = ""
-                            }
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = SafetyYellow)
-                    ) {
-                        Text("Send", color = Color.Black)
+
+                    // attach toggle
+                    IconButton(onClick = { attachReport = !attachReport }) {
+                        Icon(
+                            imageVector = if (attachReport) Icons.Default.Check else Icons.Default.AttachFile,
+                            contentDescription = "Attach Report",
+                            tint = if (attachReport) SafetyYellow else Color.White
+                        )
                     }
                 }
             }
         }
     }
 }
-
-data class ChatMessage(
-    val sender: String,   // e.g. "Inspector", "Supervisor"
-    val content: String,
-    val timestamp: String // just for display, you can use Date later
-)
-
-val sampleMessages = listOf(
-    ChatMessage("Inspector", "Hello supervisor, I’ve uploaded the inspection report.", "09:00 AM"),
-    ChatMessage("Supervisor", "Thanks, I’ll review it shortly.", "09:05 AM"),
-    ChatMessage("Inspector", "Please check the electrical section, it might need more details.", "09:07 AM"),
-    ChatMessage("Supervisor", "Got it. I’ll request an update if needed.", "09:10 AM"),
-    ChatMessage("Inspector", "Okay, waiting for your feedback.", "09:15 AM")
-)

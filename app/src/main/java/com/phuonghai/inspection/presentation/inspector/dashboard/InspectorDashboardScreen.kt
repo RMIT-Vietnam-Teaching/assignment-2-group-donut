@@ -10,6 +10,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -17,189 +18,17 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavController
 import com.phuonghai.inspection.domain.model.User
+import com.phuonghai.inspection.presentation.generalUI.ButtonUI
+import com.phuonghai.inspection.presentation.navigation.Screen
 import com.phuonghai.inspection.presentation.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun InspectorInfoCard(user: User?) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(bottom = 8.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
-    ) {
-        Column(
-            modifier = Modifier.padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            // Header with icon and title
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Person,
-                    contentDescription = "Inspector Info",
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(28.dp)
-                )
-                Text(
-                    text = "Thông tin Inspector",
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-            }
-
-            Divider(
-                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
-                thickness = 1.dp
-            )
-
-            // Inspector details
-            Column(
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                InfoRow(
-                    label = "Họ và tên:",
-                    value = user?.fullName ?: "Chưa cập nhật",
-                    icon = Icons.Default.Badge,
-                )
-
-                InfoRow(
-                    label = "ID Inspector:",
-                    value = "INSP-${user?.uId?.take(6)?.uppercase() ?: "000000"}",
-                    icon = Icons.Default.Numbers
-                )
-
-                InfoRow(
-                    label = "Số điện thoại:",
-                    value = user?.phoneNumber ?: "Chưa cập nhật",
-                    icon = Icons.Default.Phone
-                )
-
-                InfoRow(
-                    label = "Email:",
-                    value = user?.email ?: "Chưa cập nhật",
-                    icon = Icons.Default.Email
-                )
-
-                InfoRow(
-                    label = "Vai trò:",
-                    value = when(user?.role?.name) {
-                        "INSPECTOR" -> "Nhân viên kiểm tra"
-                        "SUPERVISOR" -> "Giám sát viên"
-                        else -> "Chưa xác định"
-                    },
-                    icon = Icons.Default.Work,
-                    valueColor = MaterialTheme.colorScheme.primary
-                )
-
-                if (!user?.supervisorId.isNullOrBlank()) {
-                    InfoRow(
-                        label = "Supervisor:",
-                        value = user?.supervisorId ?: "",
-                        icon = Icons.Default.SupervisorAccount
-                    )
-                }
-            }
-
-            // Status indicator
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(10.dp)
-                            .background(
-                                StatusGreen,
-                                shape = androidx.compose.foundation.shape.CircleShape
-                            )
-                    )
-                    Text(
-                        text = "Đang hoạt động",
-                        fontSize = 14.sp,
-                        color = StatusGreen,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
-
-                Text(
-                    text = "Cập nhật: ${getCurrentDateTime()}",
-                    fontSize = 14.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun InfoRow(
-    label: String,
-    value: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    valueColor: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.onSurface
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = label,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(20.dp)
-        )
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = label,
-                fontSize = 15.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontWeight = FontWeight.Medium,
-                modifier = Modifier.weight(0.4f)
-            )
-
-            Text(
-                text = value,
-                fontSize = 15.sp,
-                color = valueColor,
-                fontWeight = FontWeight.Normal,
-                modifier = Modifier.weight(0.6f),
-                textAlign = TextAlign.End
-            )
-        }
-    }
-}
-
-// Helper function to get current date time
-private fun getCurrentDateTime(): String {
-    val sdf = java.text.SimpleDateFormat("dd/MM/yyyy HH:mm", java.util.Locale.getDefault())
-    return sdf.format(java.util.Date())
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
 fun InspectorDashboardScreen(
-    viewModel: InspectorDashboardViewModel = hiltViewModel()
+    viewModel: InspectorDashboardViewModel = hiltViewModel(),
+    navController: NavController
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
@@ -223,24 +52,28 @@ fun InspectorDashboardScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Text(
-                        "Dashboard",
-                        color = MaterialTheme.colorScheme.onSurface,
-                        fontWeight = FontWeight.Bold
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)
+                    ){
+                        Text(
+                            "Dashboard",
+                            color = MaterialTheme.colorScheme.onSurface,
+                            fontWeight = FontWeight.Bold
+                        )
+                        ButtonUI(
+                            text = "Chat",
+                            onClick = {
+                                navController.navigate(Screen.InspectorChatDetailScreen.route)
+                            },
+                            modifier = Modifier.clip(RoundedCornerShape(50.dp))
+                        )
+                    }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface
-                ),
-                actions = {
-                    IconButton(onClick = { viewModel.refreshDashboard() }) {
-                        Icon(
-                            imageVector = Icons.Default.Refresh,
-                            contentDescription = "Refresh",
-                            tint = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
-                }
+                )
             )
         }
     ) { innerPadding ->
@@ -655,4 +488,179 @@ fun ErrorContent(
             containerColor = MaterialTheme.colorScheme.surface
         )
     }
+}
+
+@Composable
+fun InspectorInfoCard(user: User?) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 8.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            // Header with icon and title
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Person,
+                    contentDescription = "Inspector Info",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(28.dp)
+                )
+                Text(
+                    text = "Thông tin Inspector",
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+
+            Divider(
+                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+                thickness = 1.dp
+            )
+
+            // Inspector details
+            Column(
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                InfoRow(
+                    label = "Họ và tên:",
+                    value = user?.fullName ?: "Chưa cập nhật",
+                    icon = Icons.Default.Badge,
+                )
+
+                InfoRow(
+                    label = "ID Inspector:",
+                    value = "INSP-${user?.uId?.take(6)?.uppercase() ?: "000000"}",
+                    icon = Icons.Default.Numbers
+                )
+
+                InfoRow(
+                    label = "Số điện thoại:",
+                    value = user?.phoneNumber ?: "Chưa cập nhật",
+                    icon = Icons.Default.Phone
+                )
+
+                InfoRow(
+                    label = "Email:",
+                    value = user?.email ?: "Chưa cập nhật",
+                    icon = Icons.Default.Email
+                )
+
+                InfoRow(
+                    label = "Vai trò:",
+                    value = when(user?.role?.name) {
+                        "INSPECTOR" -> "Nhân viên kiểm tra"
+                        "SUPERVISOR" -> "Giám sát viên"
+                        else -> "Chưa xác định"
+                    },
+                    icon = Icons.Default.Work,
+                    valueColor = MaterialTheme.colorScheme.primary
+                )
+
+                if (!user?.supervisorId.isNullOrBlank()) {
+                    InfoRow(
+                        label = "Supervisor:",
+                        value = user?.supervisorId ?: "",
+                        icon = Icons.Default.SupervisorAccount
+                    )
+                }
+            }
+
+            // Status indicator
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(10.dp)
+                            .background(
+                                StatusGreen,
+                                shape = androidx.compose.foundation.shape.CircleShape
+                            )
+                    )
+                    Text(
+                        text = "Đang hoạt động",
+                        fontSize = 14.sp,
+                        color = StatusGreen,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+
+                Text(
+                    text = "Cập nhật: ${getCurrentDateTime()}",
+                    fontSize = 14.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun InfoRow(
+    label: String,
+    value: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    valueColor: Color = MaterialTheme.colorScheme.onSurface
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = label,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(20.dp)
+        )
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = label,
+                fontSize = 15.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontWeight = FontWeight.Medium,
+                modifier = Modifier.weight(0.4f)
+            )
+
+            Text(
+                text = value,
+                fontSize = 15.sp,
+                color = valueColor,
+                fontWeight = FontWeight.Normal,
+                modifier = Modifier.weight(0.6f),
+                textAlign = TextAlign.End
+            )
+        }
+    }
+}
+
+// Helper function to get current date time
+private fun getCurrentDateTime(): String {
+    val sdf = java.text.SimpleDateFormat("dd/MM/yyyy HH:mm", java.util.Locale.getDefault())
+    return sdf.format(java.util.Date())
 }

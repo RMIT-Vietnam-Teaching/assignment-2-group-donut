@@ -75,9 +75,16 @@ fun SupervisorNavHost(
         composable(Screen.SupervisorChatBoxScreen.route){
             SupervisorChatBoxScreen(navController = navController)
         }
-        composable(Screen.SupervisorChatDetailScreen.route +"/{inspectorId}") { backStackEntry ->
-            val inspectorId = backStackEntry.arguments?.getString("inspectorId")
-            SupervisorChatDetailScreen(inspectorId = inspectorId ?: "", navController = navController)
+        composable(
+            route = Screen.SupervisorChatDetailScreen.route + "/{inspectorId}/{inspectorName}"
+        ) { backStackEntry ->
+            val inspectorId = backStackEntry.arguments?.getString("inspectorId") ?: ""
+            val inspectorName = backStackEntry.arguments?.getString("inspectorName") ?: ""
+            SupervisorChatDetailScreen(
+                inspectorId = inspectorId,
+                inspectorName = inspectorName,
+                navController = navController
+            )
         }
     }
 }

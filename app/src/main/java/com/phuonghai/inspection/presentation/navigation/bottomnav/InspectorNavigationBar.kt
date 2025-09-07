@@ -24,7 +24,9 @@ import com.phuonghai.inspection.presentation.home.inspector.InspectorDashboardSc
 import com.phuonghai.inspection.presentation.home.inspector.InspectorNewReportScreen
 import com.phuonghai.inspection.presentation.home.inspector.InspectorNotificationScreen
 import com.phuonghai.inspection.presentation.home.inspector.InspectorProfileScreen
+import com.phuonghai.inspection.presentation.inspector.chatbox.InspectorChatDetailScreen
 import com.phuonghai.inspection.presentation.inspector.task.InspectorTaskScreen
+
 import com.phuonghai.inspection.presentation.navigation.Screen
 
 enum class InspectorDestination(
@@ -52,7 +54,7 @@ fun InspectorNavHost(
         InspectorDestination.entries.forEach { destination ->
             composable(destination.route) {
                 when (destination) {
-                    InspectorDestination.DASHBOARD -> InspectorDashboardScreen()
+                    InspectorDestination.DASHBOARD -> InspectorDashboardScreen(navController = navController)
                     InspectorDestination.Task -> InspectorTaskScreen(navController = navController)
                     InspectorDestination.HISTORY -> InspectorHistoryReportScreen(navController = navController)
                     InspectorDestination.NOTIFICATIONS -> InspectorNotificationScreen()
@@ -85,6 +87,10 @@ fun InspectorNavHost(
                 reportId = reportId
             )
         }
+        composable(route = Screen.InspectorChatDetailScreen.route) {
+            InspectorChatDetailScreen(navController = navController)
+        }
+
     }
 }
 
