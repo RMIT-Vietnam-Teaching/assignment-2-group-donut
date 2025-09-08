@@ -11,12 +11,15 @@ import com.google.firebase.storage.storage
 import com.phuonghai.inspection.core.network.NetworkMonitor
 import com.phuonghai.inspection.core.storage.OfflineFileManager
 import com.phuonghai.inspection.core.sync.ReportSyncService
+import com.phuonghai.inspection.core.sync.TaskSyncService
 import com.phuonghai.inspection.data.local.dao.LocalReportDao
+import com.phuonghai.inspection.data.local.dao.LocalTaskDao
 import com.phuonghai.inspection.data.local.database.AppDatabase
 import com.phuonghai.inspection.data.repository.AuthRepositoryImpl
 import com.phuonghai.inspection.data.repository.BranchRepositoryImpl
 import com.phuonghai.inspection.data.repository.ChatMessageRepositoryImpl
 import com.phuonghai.inspection.data.repository.OfflineReportRepository
+import com.phuonghai.inspection.data.repository.OfflineTaskRepository
 import com.phuonghai.inspection.data.repository.ReportRepositoryImpl
 import com.phuonghai.inspection.data.repository.TaskRepositoryImpl
 import com.phuonghai.inspection.data.repository.UserRepositoryImpl
@@ -75,6 +78,12 @@ object AppModule {
         return database.localReportDao()
     }
 
+    // ✅ NEW: Local Task DAO
+    @Provides
+    fun provideLocalTaskDao(database: AppDatabase): LocalTaskDao {
+        return database.localTaskDao()
+    }
+
     // ✅ Network Monitor
     @Provides
     @Singleton
@@ -98,6 +107,15 @@ object AppModule {
         return ReportRepositoryImpl(firestore)
     }
 
+    // ✅ Online Task Repository (for delegation)
+    @Provides
+    @Singleton
+    fun provideOnlineTaskRepository(
+        firestore: FirebaseFirestore
+    ): TaskRepositoryImpl {
+        return TaskRepositoryImpl(firestore)
+    }
+
     // ✅ Offline Report Repository (main implementation)
     @Provides
     @Singleton
@@ -109,62 +127,81 @@ object AppModule {
         @ApplicationContext context: Context
     ): IReportRepository {
         return OfflineReportRepository(
-            localReportDao = localReportDao,
-            onlineReportRepository = onlineReportRepository,
-            networkMonitor = networkMonitor,
-            fileManager = fileManager,
-            context = context
+            localReportDao,
+            onlineReportRepository,
+            networkMonitor,
+            fileManager,
+            context
         )
     }
 
-    // ✅ Sync Service
+    // ✅ NEW: Offline Task Repository (main implementation)
     @Provides
     @Singleton
-    fun provideSyncService(
+    fun provideTaskRepository(
+        localTaskDao: LocalTaskDao,
+        onlineTaskRepository: TaskRepositoryImpl,
+        networkMonitor: NetworkMonitor,
+        @ApplicationContext context: Context
+    ): ITaskRepository {
+        return OfflineTaskRepository(
+            localTaskDao,
+            onlineTaskRepository,
+            networkMonitor,
+            context
+        )
+    }
+
+    // ✅ NEW: Task Sync Service
+    @Provides
+    @Singleton
+    fun provideTaskSyncService(
+        offlineTaskRepository: OfflineTaskRepository,
+        authRepository: IAuthRepository,
+        networkMonitor: NetworkMonitor
+    ): TaskSyncService {
+        return TaskSyncService(
+            offlineTaskRepository,
+            authRepository,
+            networkMonitor
+        )
+    }
+
+    // ✅ Report Sync Service
+    @Provides
+    @Singleton
+    fun provideReportSyncService(
         localReportDao: LocalReportDao,
-        reportRepository: ReportRepositoryImpl, // Use online repository for sync
+        reportRepository: IReportRepository,
         fileManager: OfflineFileManager
     ): ReportSyncService {
         return ReportSyncService(localReportDao, reportRepository, fileManager)
     }
 
+    // Other existing providers...
     @Provides
     @Singleton
-    fun provideTaskRepository(
-        firestore: FirebaseFirestore
-    ): ITaskRepository {
-        return TaskRepositoryImpl(firestore)
-    }
-
-    @Provides
-    @Singleton
-    fun provideBranchRepository(
-        firestore: FirebaseFirestore
-    ): IBranchRepository {
+    fun provideBranchRepository(firestore: FirebaseFirestore): IBranchRepository {
         return BranchRepositoryImpl(firestore)
     }
 
     @Provides
     @Singleton
-    fun provideUserRepository(
-        firestore: FirebaseFirestore
-    ): IUserRepository {
+    fun provideUserRepository(firestore: FirebaseFirestore): IUserRepository {
         return UserRepositoryImpl(firestore)
     }
 
     @Provides
     @Singleton
-    fun provideSignOutUseCase(
-        authRepository: IAuthRepository
-    ): SignOutUseCase {
-        return SignOutUseCase(authRepository)
+    fun provideChatMessageRepository(
+        firebaseDatabase: FirebaseDatabase
+    ): IChatMessageRepository {
+        return ChatMessageRepositoryImpl(firebaseDatabase)
     }
 
     @Provides
     @Singleton
-    fun provideChatMessageRepository(
-        database: FirebaseDatabase
-    ): IChatMessageRepository{
-        return ChatMessageRepositoryImpl(database)
+    fun provideSignOutUseCase(authRepository: IAuthRepository): SignOutUseCase {
+        return SignOutUseCase(authRepository)
     }
 }

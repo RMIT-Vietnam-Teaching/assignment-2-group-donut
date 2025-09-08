@@ -7,6 +7,7 @@
         android:name="android.hardware.camera"
         android:required="false" />
 
+    <!-- ✅ Existing permissions -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
@@ -14,6 +15,14 @@
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+
+    <!-- ✅ THÊM MỚI: Permissions cho background sync -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+
+    <!-- ✅ Permission cho Android 12+ exact alarms (optional) -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
 
     <application
         android:name=".InspectionApp"
@@ -40,14 +49,21 @@
             android:name="com.google.android.geo.API_KEY"
             android:value="AIzaSyD-EEdM3Oks_LXAumGsCxAAfURC-FyFsP0" />
 
-        <!-- ✅ Fix WorkManager double initialization -->
+        <!-- ✅ THÊM MỚI: Network Connection Listener Service -->
+        <service
+            android:name=".core.network.NetworkConnectionListener"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+
+        <!-- ✅ Fix WorkManager double initialization (đã có) -->
         <provider
             android:name="androidx.startup.InitializationProvider"
             android:authorities="${applicationId}.androidx-startup"
             android:exported="false"
             tools:node="merge">
 
-            <!-- ✅ Remove automatic WorkManager initialization -->
+            <!-- ✅ Remove automatic WorkManager initialization (đã có) -->
             <meta-data
                 android:name="androidx.work.WorkManagerInitializer"
                 android:value="androidx.startup"

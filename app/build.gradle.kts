@@ -91,7 +91,7 @@ dependencies {
     kapt("com.google.dagger:hilt-android-compiler:2.51.1")
     implementation("androidx.hilt:hilt-navigation-compose:1.2.0")
 
-    // ✅ Thêm Hilt Work để fix WorkManager + Hilt
+    // ✅ Hilt Work để fix WorkManager + Hilt (đã có)
     implementation("androidx.hilt:hilt-work:1.2.0")
     kapt("androidx.hilt:hilt-compiler:1.2.0")
 
@@ -117,13 +117,19 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.0")
 
-    // ✅ Room Database for offline storage
+    // ✅ Room Database for offline storage (đã có)
     val room_version = "2.6.1"
     implementation("androidx.room:room-runtime:$room_version")
     implementation("androidx.room:room-ktx:$room_version")
     kapt("androidx.room:room-compiler:$room_version")
 
-    // ✅ Network monitoring
+    // ✅ WorkManager for background sync (đã có)
     implementation("androidx.work:work-runtime-ktx:2.9.0")
     implementation("androidx.startup:startup-runtime:1.1.1")
+
+    // ✅ THÊM MỚI: Lifecycle components for services
+    implementation("androidx.lifecycle:lifecycle-service:2.8.7")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.7")
+    implementation("androidx.lifecycle:lifecycle-livedata-ktx:2.8.7")
+    implementation("androidx.lifecycle:lifecycle-common-java8:2.8.7")
 }

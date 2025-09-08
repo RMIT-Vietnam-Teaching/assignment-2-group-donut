@@ -7,9 +7,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Assignment
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -37,87 +35,134 @@ fun InspectorTaskScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val filteredTasks by viewModel.filteredTasks.collectAsStateWithLifecycle()
+    val syncState by viewModel.syncState.collectAsStateWithLifecycle() // NEW
+    val networkState by viewModel.networkState.collectAsStateWithLifecycle() // NEW
 
-    // Load initial tasks
+    // Load initial tasks and offline info
     LaunchedEffect(Unit) {
         viewModel.loadTasks()
+        viewModel.getOfflineTasksInfo() // NEW
     }
+
     LaunchedEffect(navController) {
         val savedStateHandle = navController.currentBackStackEntry?.savedStateHandle
         savedStateHandle?.getStateFlow("should_refresh_tasks", false)?.collect { shouldRefresh ->
             if (shouldRefresh) {
                 Log.d("TaskScreen", "Refreshing tasks due to report submission")
                 viewModel.refreshTasks()
-                // Clear flag
                 savedStateHandle["should_refresh_tasks"] = false
             }
         }
     }
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
-                    Text(
-                        "My Tasks",
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = OffWhite
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            "My Tasks",
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = OffWhite
+                        )
+
+                        // NEW: Online/Offline indicator
+                        Spacer(modifier = Modifier.width(8.dp))
+                        NetworkStatusIndicator(
+                            isOnline = networkState,
+                            modifier = Modifier
+                        )
+                    }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = DarkCharcoal
                 ),
                 actions = {
+                    // NEW: Sync button
+                    IconButton(
+                        onClick = { viewModel.syncTasks() },
+                        enabled = networkState
+                    ) {
+                        when (syncState) {
+                            is TaskSyncUiState.Syncing -> {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(20.dp),
+                                    color = OffWhite,
+                                    strokeWidth = 2.dp
+                                )
+                            }
+                            else -> {
+                                Icon(
+                                    Icons.Default.Sync,
+                                    contentDescription = "Sync Tasks",
+                                    tint = if (networkState) OffWhite else OffWhite.copy(alpha = 0.5f)
+                                )
+                            }
+                        }
+                    }
+
                     IconButton(onClick = { viewModel.refreshTasks() }) {
                         Icon(
-                            imageVector = Icons.Default.Refresh,
+                            Icons.Default.Refresh,
                             contentDescription = "Refresh",
-                            tint = SafetyYellow
+                            tint = OffWhite
                         )
                     }
                 }
             )
-        },
-        containerColor = Color.Black
+        }
     ) { innerPadding ->
         Column(
             modifier = Modifier
-                .fillMaxSize()
                 .padding(innerPadding)
-                .padding(horizontal = 16.dp)
+                .padding(16.dp)
         ) {
+            // NEW: Sync Status Card
+            SyncStatusCard(
+                syncState = syncState,
+                offlineTasksCount = uiState.offlineTasksCount,
+                isOnline = networkState,
+                onSyncClick = { viewModel.syncTasks() },
+                onDismissSync = { viewModel.clearSyncStatus() }
+            )
+
             Spacer(modifier = Modifier.height(16.dp))
 
             // Search bar
             OutlinedTextField(
                 value = uiState.searchQuery,
                 onValueChange = viewModel::updateSearchQuery,
-                label = { Text("Search tasks", color = TextSecondary) },
+                placeholder = { Text("Search tasks...") },
                 leadingIcon = {
-                    Icon(Icons.Default.Search, contentDescription = null, tint = SafetyYellow)
+                    Icon(Icons.Default.Search, contentDescription = "Search")
                 },
                 modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                shape = RoundedCornerShape(12.dp)
+                colors = TextFieldDefaults.outlinedTextFieldColors(
+                    focusedBorderColor = SafetyYellow,
+                    unfocusedBorderColor = Color.Gray
+                )
             )
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
+            // Filter Row
             Row(
-                modifier = Modifier
-                    .fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // Priority
+                // Priority Filter
                 DropdownFilter(
                     label = "Priority",
-                    options = listOf("All", "HIGH", "NORMAL", "LOW"),
+                    options = listOf("All", "High", "Medium", "Low"),
                     selectedOption = uiState.selectedPriority,
                     onOptionSelected = viewModel::updatePriorityFilter,
                     modifier = Modifier.weight(1f)
                 )
 
-                // Status
+                // Status Filter
                 DropdownFilter(
                     label = "Status",
                     options = listOf("All", "ASSIGNED", "IN_PROGRESS", "COMPLETED", "CANCELLED", "OVERDUE"),
@@ -126,7 +171,7 @@ fun InspectorTaskScreen(
                     modifier = Modifier.weight(1f)
                 )
 
-                // Due Date
+                // Due Date Filter
                 DropdownFilter(
                     label = "Due Date",
                     options = listOf("All", "Today", "This Week", "This Month"),
@@ -151,41 +196,31 @@ fun InspectorTaskScreen(
 
                 uiState.showError -> {
                     ErrorContent(
-                        message = uiState.errorMessage ?: "Có lỗi xảy ra",
+                        message = uiState.errorMessage ?: "Unknown error occurred",
                         onRetry = { viewModel.refreshTasks() },
                         onDismiss = { viewModel.clearError() }
                     )
                 }
 
-                uiState.isEmpty -> {
-                    EmptyTasksContent()
+                filteredTasks.isEmpty() -> {
+                    EmptyTasksContent(
+                        isOnline = networkState,
+                        onRetry = { viewModel.refreshTasks() }
+                    )
                 }
 
                 else -> {
-                    // Task list
                     LazyColumn(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(bottom = 110.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         items(filteredTasks) { taskWithDetails ->
                             TaskCard(
                                 taskWithDetails = taskWithDetails,
-                                onStatusUpdate = { taskId, newStatus ->
-                                    viewModel.updateTaskStatus(taskId, newStatus)
-                                },
-                                onCreateReportClick = {
-                                    Log.d("TaskScreen", "Navigating to new report with taskId: ${taskWithDetails.task.taskId}")
-                                    navController.navigate("${Screen.InspectorNewReportScreen.route}?taskId=${taskWithDetails.task.taskId}")
-                                },
-                                onContinueDraftClick = {
-                                    taskWithDetails.draftReport?.let { draft ->
-                                        Log.d("TaskScreen", "Navigating to continue draft with reportId: ${draft.reportId}")
-                                        navController.navigate("${Screen.InspectorNewReportScreen.route}?reportId=${draft.reportId}")
-                                    }
-                                },
-                                hasDraft = taskWithDetails.hasDraft
+                                onClick = {
+                                    navController.navigate(
+                                        Screen.InspectorNewReport.createRoute(taskWithDetails.task.taskId)
+                                    )
+                                }
                             )
                         }
                     }
@@ -195,6 +230,592 @@ fun InspectorTaskScreen(
     }
 }
 
+// NEW: Sync Status Card Component
+@Composable
+fun SyncStatusCard(
+    syncState: TaskSyncUiState,
+    offlineTasksCount: Int,
+    isOnline: Boolean,
+    onSyncClick: () -> Unit,
+    onDismissSync: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = when (syncState) {
+                is TaskSyncUiState.Success -> Color(0xFF4CAF50).copy(alpha = 0.1f)
+                is TaskSyncUiState.Error -> Color(0xFFF44336).copy(alpha = 0.1f)
+                is TaskSyncUiState.Syncing -> Color(0xFF2196F3).copy(alpha = 0.1f)
+                else -> if (isOnline) Color.Transparent else Color(0xFFFF9800).copy(alpha = 0.1f)
+            }
+        ),
+        border = BorderStroke(
+            width = 1.dp,
+            color = when (syncState) {
+                is TaskSyncUiState.Success -> Color(0xFF4CAF50)
+                is TaskSyncUiState.Error -> Color(0xFFF44336)
+                is TaskSyncUiState.Syncing -> Color(0xFF2196F3)
+                else -> if (isOnline) Color.Gray.copy(alpha = 0.3f) else Color(0xFFFF9800)
+            }
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            when (syncState) {
+                is TaskSyncUiState.Idle -> {
+                    if (!isOnline && offlineTasksCount > 0) {
+                        OfflineStatusContent(
+                            taskCount = offlineTasksCount,
+                            onSyncClick = onSyncClick
+                        )
+                    } else if (isOnline && offlineTasksCount > 0) {
+                        OnlineStatusContent(
+                            taskCount = offlineTasksCount,
+                            onSyncClick = onSyncClick
+                        )
+                    }
+                }
+
+                is TaskSyncUiState.Syncing -> {
+                    SyncingStatusContent()
+                }
+
+                is TaskSyncUiState.Success -> {
+                    SuccessStatusContent(
+                        taskCount = syncState.taskCount,
+                        onDismiss = onDismissSync
+                    )
+                }
+
+                is TaskSyncUiState.Error -> {
+                    ErrorStatusContent(
+                        message = syncState.message,
+                        onRetry = onSyncClick,
+                        onDismiss = onDismissSync
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun OfflineStatusContent(
+    taskCount: Int,
+    onSyncClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                Icons.Default.CloudOff,
+                contentDescription = null,
+                tint = Color(0xFFFF9800)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Column {
+                Text(
+                    text = "Offline Mode",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = "$taskCount tasks available offline",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.Gray
+                )
+            }
+        }
+        TextButton(
+            onClick = onSyncClick,
+            enabled = false
+        ) {
+            Text("Sync when online")
+        }
+    }
+}
+
+@Composable
+private fun OnlineStatusContent(
+    taskCount: Int,
+    onSyncClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                Icons.Default.Cloud,
+                contentDescription = null,
+                tint = Color(0xFF4CAF50)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Column {
+                Text(
+                    text = "Online",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = "$taskCount tasks cached locally",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.Gray
+                )
+            }
+        }
+        Button(
+            onClick = onSyncClick,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = SafetyYellow,
+                contentColor = DarkCharcoal
+            )
+        ) {
+            Text("Sync Now")
+        }
+    }
+}
+
+@Composable
+private fun SyncingStatusContent() {
+    Row(
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        CircularProgressIndicator(
+            modifier = Modifier.size(20.dp),
+            color = Color(0xFF2196F3),
+            strokeWidth = 2.dp
+        )
+        Spacer(modifier = Modifier.width(12.dp))
+        Text(
+            text = "Syncing tasks...",
+            style = MaterialTheme.typography.titleMedium
+        )
+    }
+}
+
+@Composable
+private fun SuccessStatusContent(
+    taskCount: Int,
+    onDismiss: () -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                Icons.Default.CheckCircle,
+                contentDescription = null,
+                tint = Color(0xFF4CAF50)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = "Sync successful: $taskCount tasks updated",
+                style = MaterialTheme.typography.titleMedium
+            )
+        }
+        IconButton(onClick = onDismiss) {
+            Icon(
+                Icons.Default.Close,
+                contentDescription = "Close",
+                tint = Color.Gray
+            )
+        }
+    }
+}
+
+@Composable
+private fun ErrorStatusContent(
+    message: String,
+    onRetry: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    Column {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    Icons.Default.Error,
+                    contentDescription = null,
+                    tint = Color(0xFFF44336)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Sync failed",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = Color(0xFFF44336)
+                )
+            }
+            IconButton(onClick = onDismiss) {
+                Icon(
+                    Icons.Default.Close,
+                    contentDescription = "Close",
+                    tint = Color.Gray
+                )
+            }
+        }
+
+        Text(
+            text = message,
+            style = MaterialTheme.typography.bodyMedium,
+            color = Color.Gray,
+            modifier = Modifier.padding(top = 4.dp)
+        )
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 8.dp),
+            horizontalArrangement = Arrangement.End
+        ) {
+            TextButton(onClick = onRetry) {
+                Text(
+                    "Try Again",
+                    color = Color(0xFF2196F3)
+                )
+            }
+        }
+    }
+}
+
+// NEW: Network Status Indicator
+@Composable
+fun NetworkStatusIndicator(
+    isOnline: Boolean,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = modifier
+    ) {
+        Icon(
+            imageVector = if (isOnline) Icons.Default.Cloud else Icons.Default.CloudOff,
+            contentDescription = if (isOnline) "Online" else "Offline",
+            tint = if (isOnline) Color(0xFF4CAF50) else Color(0xFFFF9800),
+            modifier = Modifier.size(16.dp)
+        )
+        Spacer(modifier = Modifier.width(4.dp))
+        Text(
+            text = if (isOnline) "Online" else "Offline",
+            style = MaterialTheme.typography.labelSmall,
+            color = if (isOnline) Color(0xFF4CAF50) else Color(0xFFFF9800)
+        )
+    }
+}
+
+// Enhanced Empty Content with offline context
+@Composable
+fun EmptyTasksContent(
+    isOnline: Boolean,
+    onRetry: () -> Unit
+) {
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Icon(
+            imageVector = if (isOnline) Icons.Default.Assignment else Icons.Default.CloudOff,
+            contentDescription = null,
+            modifier = Modifier.size(64.dp),
+            tint = Color.Gray
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Text(
+            text = if (isOnline) "No tasks found" else "No tasks available offline",
+            style = MaterialTheme.typography.titleLarge,
+            color = Color.Gray,
+            textAlign = TextAlign.Center
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Text(
+            text = if (isOnline)
+                "Try adjusting your filters or refresh to load new tasks"
+            else
+                "Connect to internet to download your tasks",
+            style = MaterialTheme.typography.bodyMedium,
+            color = Color.Gray,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(horizontal = 32.dp)
+        )
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Button(
+            onClick = onRetry,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = SafetyYellow,
+                contentColor = DarkCharcoal
+            ),
+            enabled = isOnline
+        ) {
+            Icon(
+                Icons.Default.Refresh,
+                contentDescription = null,
+                modifier = Modifier.size(18.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(if (isOnline) "Refresh" else "Refresh when online")
+        }
+    }
+}
+
+// Enhanced Error Content
+@Composable
+fun ErrorContent(
+    message: String,
+    onRetry: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = Color(0xFFF44336).copy(alpha = 0.1f)
+        ),
+        border = BorderStroke(1.dp, Color(0xFFF44336))
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        Icons.Default.Error,
+                        contentDescription = null,
+                        tint = Color(0xFFF44336)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Error",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFFF44336)
+                    )
+                }
+                IconButton(onClick = onDismiss) {
+                    Icon(
+                        Icons.Default.Close,
+                        contentDescription = "Close",
+                        tint = Color.Gray
+                    )
+                }
+            }
+
+            Text(
+                text = message,
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color.Gray,
+                modifier = Modifier.padding(top = 8.dp, bottom = 12.dp)
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End
+            ) {
+                TextButton(onClick = onRetry) {
+                    Text(
+                        "Try Again",
+                        color = Color(0xFF2196F3)
+                    )
+                }
+            }
+        }
+    }
+}
+
+// Enhanced Task Card with offline indicators
+@Composable
+fun TaskCard(
+    taskWithDetails: TaskWithDetails,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth(),
+        onClick = onClick,
+        colors = CardDefaults.cardColors(
+            containerColor = Color.White
+        ),
+        border = BorderStroke(1.dp, Color.Gray.copy(alpha = 0.3f))
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            // Header with title and status
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = taskWithDetails.task.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f)
+                )
+
+                TaskStatusChip(status = taskWithDetails.task.status)
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Description
+            Text(
+                text = taskWithDetails.task.description,
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color.Gray,
+                maxLines = 2
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Details row
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                // Branch info
+                Column {
+                    Text(
+                        text = "Branch",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.Gray
+                    )
+                    Text(
+                        text = taskWithDetails.branch?.name ?: "Unknown",
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+
+                // Due date
+                Column(
+                    horizontalAlignment = Alignment.End
+                ) {
+                    Text(
+                        text = "Due Date",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.Gray
+                    )
+                    Text(
+                        text = taskWithDetails.task.dueDate?.let {
+                            SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
+                                .format(Date(it.seconds * 1000))
+                        } ?: "No due date",
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            }
+
+            // Priority and report status
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                PriorityChip(priority = taskWithDetails.task.priority)
+
+                if (taskWithDetails.hasReport) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Default.Description,
+                            contentDescription = null,
+                            tint = Color(0xFF4CAF50),
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "Has Report",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color(0xFF4CAF50)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun TaskStatusChip(status: TaskStatus) {
+    val (backgroundColor, textColor) = when (status) {
+        TaskStatus.ASSIGNED -> Color(0xFF2196F3) to Color.White
+        TaskStatus.IN_PROGRESS -> Color(0xFFFF9800) to Color.White
+        TaskStatus.COMPLETED -> Color(0xFF4CAF50) to Color.White
+        TaskStatus.CANCELLED -> Color(0xFFF44336) to Color.White
+        TaskStatus.OVERDUE -> Color(0xFF9C27B0) to Color.White
+    }
+
+    Surface(
+        color = backgroundColor,
+        shape = RoundedCornerShape(12.dp),
+        modifier = Modifier.padding(4.dp)
+    ) {
+        Text(
+            text = status.name,
+            style = MaterialTheme.typography.labelSmall,
+            color = textColor,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+        )
+    }
+}
+
+@Composable
+fun PriorityChip(priority: String) {
+    val (backgroundColor, textColor) = when (priority.lowercase()) {
+        "high" -> Color(0xFFF44336) to Color.White
+        "medium" -> Color(0xFFFF9800) to Color.White
+        "low" -> Color(0xFF4CAF50) to Color.White
+        else -> Color.Gray to Color.White
+    }
+
+    Surface(
+        color = backgroundColor,
+        shape = RoundedCornerShape(8.dp)
+    ) {
+        Text(
+            text = priority,
+            style = MaterialTheme.typography.labelSmall,
+            color = textColor,
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DropdownFilter(
     label: String,
@@ -205,31 +826,33 @@ fun DropdownFilter(
 ) {
     var expanded by remember { mutableStateOf(false) }
 
-    Box(modifier = modifier) {
-        OutlinedButton(
-            onClick = { expanded = true },
-            border = BorderStroke(1.dp, SafetyYellow),
-            colors = ButtonDefaults.outlinedButtonColors(
-                containerColor = Color.Transparent,
-                contentColor = SafetyYellow
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = !expanded },
+        modifier = modifier
+    ) {
+        OutlinedTextField(
+            value = selectedOption,
+            onValueChange = {},
+            readOnly = true,
+            label = { Text(label) },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+            colors = TextFieldDefaults.outlinedTextFieldColors(
+                focusedBorderColor = SafetyYellow,
+                unfocusedBorderColor = Color.Gray
             ),
-            shape = RoundedCornerShape(8.dp)
-        ) {
-            Text(
-                "$label: $selectedOption",
-                fontSize = 14.sp,
-                color = SafetyYellow,
-                maxLines = 1
-            )
-        }
+            modifier = Modifier
+                .menuAnchor()
+                .fillMaxWidth()
+        )
 
-        DropdownMenu(
+        ExposedDropdownMenu(
             expanded = expanded,
             onDismissRequest = { expanded = false }
         ) {
             options.forEach { option ->
                 DropdownMenuItem(
-                    text = { Text(option, color = OffWhite) },
+                    text = { Text(option) },
                     onClick = {
                         onOptionSelected(option)
                         expanded = false
@@ -238,304 +861,4 @@ fun DropdownFilter(
             }
         }
     }
-}
-
-@Composable
-fun TaskCard(
-    taskWithDetails: TaskWithDetails,
-    onStatusUpdate: (String, TaskStatus) -> Unit,
-    onCreateReportClick: () -> Unit,
-    onContinueDraftClick: () -> Unit,
-    hasDraft: Boolean,
-    modifier: Modifier = Modifier
-) {
-    val task = taskWithDetails.task
-    val dateFormat = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
-
-    Card(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = SurfaceDark
-        ),
-        elevation = CardDefaults.cardElevation(6.dp),
-        shape = RoundedCornerShape(12.dp)
-    ) {
-        Box(modifier = Modifier.fillMaxWidth()) {
-            // Priority Tag (top-right corner)
-            Surface(
-                color = when (task.priority) {
-                    Priority.HIGH -> SafetyRed
-                    Priority.NORMAL -> StatusBlue
-                    Priority.LOW -> StatusGray
-                },
-                shape = RoundedCornerShape(bottomStart = 8.dp),
-                tonalElevation = 4.dp,
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-            ) {
-                Text(
-                    text = task.priority.name,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White,
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                )
-            }
-
-            if (hasDraft && taskWithDetails.draftReport != null) {
-                val draftReport = taskWithDetails.draftReport!!
-                Surface(
-                    color = StatusOrange,
-                    shape = RoundedCornerShape(bottomEnd = 8.dp),
-                    tonalElevation = 4.dp,
-                    modifier = Modifier
-                        .align(Alignment.TopStart)
-                ) {
-                    Column(
-                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
-                    ) {
-                        Text(
-                            text = "DRAFT",
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
-                        )
-                        Text(
-                            text = draftReport.createdAt?.toDate()?.let {
-                                SimpleDateFormat("dd/MM", Locale.getDefault()).format(it)
-                            } ?: "",
-                            fontSize = 8.sp,
-                            color = Color.White.copy(alpha = 0.8f)
-                        )
-                    }
-                }
-            }
-
-            // Card Content
-            Column(
-                modifier = Modifier
-                    .padding(16.dp)
-                    .padding(top = 24.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Text(
-                    task.title,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp,
-                    color = OffWhite
-                )
-
-                Text(
-                    "Description: ${task.description}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontSize = 16.sp,
-                    color = TextLight
-                )
-
-                Text(
-                    "Branch: ${taskWithDetails.branchName}",
-                    style = MaterialTheme.typography.bodySmall,
-                    fontSize = 15.sp,
-                    color = SafetyYellow
-                )
-
-                Text(
-                    "Supervisor: ${taskWithDetails.supervisorName}",
-                    style = MaterialTheme.typography.bodySmall,
-                    fontSize = 15.sp,
-                    color = TextSecondary
-                )
-
-                Text(
-                    "Due: ${task.dueDate?.toDate()?.let { dateFormat.format(it) } ?: "No due date"}",
-                    style = MaterialTheme.typography.bodySmall,
-                    fontSize = 14.sp,
-                    color = if (isTaskOverdue(task)) SafetyRed else TextSecondary
-                )
-
-                // ✅ HIỂN THỊ THÔNG TIN DRAFT NẾU CÓ
-                if (hasDraft && taskWithDetails.draftReport != null) {
-                    val draftReport = taskWithDetails.draftReport!!
-                    Text(
-                        "Draft: \"${draftReport.title}\" - ${draftReport.createdAt?.toDate()?.let {
-                            SimpleDateFormat("dd/MM HH:mm", Locale.getDefault()).format(it)
-                        }}",
-                        style = MaterialTheme.typography.bodySmall,
-                        fontSize = 13.sp,
-                        color = StatusOrange,
-                        fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
-                    )
-                }
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // Status indicator
-                    Surface(
-                        color = when (task.status) {
-                            TaskStatus.ASSIGNED -> StatusBlue
-                            TaskStatus.IN_PROGRESS -> StatusOrange
-                            TaskStatus.COMPLETED -> StatusGreen
-                            TaskStatus.CANCELLED -> StatusGray
-                            TaskStatus.OVERDUE -> SafetyRed
-                        },
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Text(
-                            text = when (task.status) {
-                                TaskStatus.ASSIGNED -> "Assigned"
-                                TaskStatus.IN_PROGRESS -> "In Progress"
-                                TaskStatus.COMPLETED -> "Completed"
-                                TaskStatus.CANCELLED -> "Cancelled"
-                                TaskStatus.OVERDUE -> "Overdue"
-                            },
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = Color.White,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                        )
-                    }
-
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        // Status update button
-                        if (task.status != TaskStatus.COMPLETED && task.status != TaskStatus.CANCELLED) {
-                            Button(
-                                onClick = {
-                                    val newStatus = when (task.status) {
-                                        TaskStatus.ASSIGNED -> TaskStatus.IN_PROGRESS
-                                        TaskStatus.IN_PROGRESS -> TaskStatus.COMPLETED
-                                        else -> TaskStatus.IN_PROGRESS
-                                    }
-                                    onStatusUpdate(task.taskId, newStatus)
-                                },
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = StatusOrange
-                                ),
-                                modifier = Modifier.height(32.dp)
-                            ) {
-                                Text(
-                                    text = when (task.status) {
-                                        TaskStatus.ASSIGNED -> "Start"
-                                        TaskStatus.IN_PROGRESS -> "Complete"
-                                        else -> "Update"
-                                    },
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color.White
-                                )
-                            }
-                        }
-
-                        // ✅ BUTTON TEXT DỰA TRÊN DRAFT STATUS
-                        Button(
-                            onClick = if (hasDraft) onContinueDraftClick else onCreateReportClick,
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = if (hasDraft) StatusOrange else SafetyYellow
-                            ),
-                            modifier = Modifier.height(32.dp)
-                        ) {
-                            Text(
-                                text = if (hasDraft) "Continue Draft" else "New Report",
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = if (hasDraft) Color.White else Color.Black
-                            )
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun EmptyTasksContent() {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(32.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Icon(
-            imageVector = Icons.Default.Assignment,
-            contentDescription = "No Tasks",
-            modifier = Modifier.size(64.dp),
-            tint = TextSecondary
-        )
-        Spacer(modifier = Modifier.height(16.dp))
-        Text(
-            text = "No Tasks Available",
-            style = MaterialTheme.typography.titleMedium,
-            color = OffWhite,
-            fontSize = 20.sp,
-            fontWeight = FontWeight.Bold
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(
-            text = "You don't have any tasks assigned yet. Check back later or contact your supervisor.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = TextSecondary,
-            textAlign = TextAlign.Center
-        )
-    }
-}
-
-@Composable
-fun ErrorContent(
-    message: String,
-    onRetry: () -> Unit,
-    onDismiss: () -> Unit
-) {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        AlertDialog(
-            onDismissRequest = onDismiss,
-            title = {
-                Text(
-                    "Error",
-                    color = OffWhite
-                )
-            },
-            text = {
-                Text(
-                    message,
-                    color = TextSecondary
-                )
-            },
-            confirmButton = {
-                TextButton(onClick = onRetry) {
-                    Text(
-                        "Retry",
-                        color = SafetyYellow
-                    )
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = onDismiss) {
-                    Text(
-                        "Close",
-                        color = TextSecondary
-                    )
-                }
-            },
-            containerColor = SurfaceDark
-        )
-    }
-}
-
-// Helper function to check if task is overdue
-private fun isTaskOverdue(task: com.phuonghai.inspection.domain.model.Task): Boolean {
-    val dueDate = task.dueDate?.toDate()?.time ?: return false
-    val currentTime = System.currentTimeMillis()
-    return currentTime > dueDate && task.status != TaskStatus.COMPLETED
 }
