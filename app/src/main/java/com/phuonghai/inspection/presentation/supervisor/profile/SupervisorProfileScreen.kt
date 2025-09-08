@@ -11,6 +11,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -18,6 +19,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Logout
@@ -46,6 +48,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import coil.compose.rememberAsyncImagePainter
 import com.google.firebase.auth.FirebaseAuth
 import com.phuonghai.inspection.R
 import com.phuonghai.inspection.presentation.generalUI.ButtonUI
@@ -96,6 +99,8 @@ fun SupervisorProfileScreen(
         val fullName = userState?.fullName ?: ""
         val email = userState?.email ?: ""
         val contact = userState?.phoneNumber ?: ""
+        val role = userState?.role?.name ?: ""
+        val profileImageUrl = userState?.profileImageUrl ?: ""
         Box(
             modifier = modifier
                 .fillMaxSize()
@@ -119,16 +124,23 @@ fun SupervisorProfileScreen(
                         .clip(RoundedCornerShape(20.dp))
                         .background(Color.White)
                         .padding(30.dp)
-                        .height(350.dp)
+                        .height(400.dp)
                         .fillMaxWidth(),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     Image(
-                        painter = painterResource(id = R.drawable.account),
-                        contentDescription = null,
+                        painter = if (profileImageUrl.isNotBlank()) {
+                            rememberAsyncImagePainter(profileImageUrl)
+                        } else {
+                            painterResource(id = R.drawable.account)
+                        },
+                        contentDescription = "Profile Image",
                         contentScale = ContentScale.Crop,
-                        modifier = Modifier.size(140.dp)
+                        modifier = Modifier
+                            .size(140.dp)
+                            .clip(CircleShape) // 👌 round avatar style
+                            .border(2.dp, Color.Gray, CircleShape)
                     )
                     Text(
                         text = fullName,
@@ -136,7 +148,7 @@ fun SupervisorProfileScreen(
                         fontSize = 24.sp,
                         fontWeight = FontWeight.Bold
                     )
-                    Spacer(modifier = Modifier.height(10.dp))
+                    Spacer(modifier = Modifier.height(5.dp))
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(5.dp)
@@ -171,7 +183,24 @@ fun SupervisorProfileScreen(
                             fontWeight = FontWeight.Light
                         )
                     }
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(5.dp)
+                    ) {
+                        Text(
+                            text = "Role: ",
+                            color = Color.Black,
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            role,
+                            color = Color.Gray,
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Light
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(10.dp))
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceEvenly,
