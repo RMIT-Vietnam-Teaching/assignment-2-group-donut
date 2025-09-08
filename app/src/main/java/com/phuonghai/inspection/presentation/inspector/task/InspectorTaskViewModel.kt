@@ -13,26 +13,24 @@ import com.phuonghai.inspection.domain.repository.IBranchRepository
 import com.phuonghai.inspection.domain.repository.IUserRepository
 import com.phuonghai.inspection.domain.repository.IReportRepository
 import com.phuonghai.inspection.domain.repository.ITaskRepository
-import com.phuonghai.inspection.domain.usecase.GetInspectorTasksUseCase
 import com.phuonghai.inspection.domain.usecase.UpdateTaskStatusUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
 class InspectorTaskViewModel @Inject constructor(
     private val authRepository: IAuthRepository,
-    private val taskRepository: ITaskRepository, // Now using OfflineTaskRepository
+    private val taskRepository: ITaskRepository,
     private val updateTaskStatusUseCase: UpdateTaskStatusUseCase,
     private val branchRepository: IBranchRepository,
     private val userRepository: IUserRepository,
     private val reportRepository: IReportRepository,
-    private val taskSyncService: TaskSyncService, // NEW: For sync functionality
-    private val networkMonitor: NetworkMonitor // NEW: For network status
+    private val taskSyncService: TaskSyncService,
+    private val networkMonitor: NetworkMonitor
 ) : ViewModel() {
 
     companion object {
@@ -42,15 +40,12 @@ class InspectorTaskViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(InspectorTaskUiState())
     val uiState: StateFlow<InspectorTaskUiState> = _uiState.asStateFlow()
 
-    // Filtered tasks based on search and filters
     private val _filteredTasks = MutableStateFlow<List<TaskWithDetails>>(emptyList())
     val filteredTasks: StateFlow<List<TaskWithDetails>> = _filteredTasks.asStateFlow()
 
-    // NEW: Sync state
     private val _syncState = MutableStateFlow<TaskSyncUiState>(TaskSyncUiState.Idle)
     val syncState: StateFlow<TaskSyncUiState> = _syncState.asStateFlow()
 
-    // NEW: Network state
     private val _networkState = MutableStateFlow(false)
     val networkState: StateFlow<Boolean> = _networkState.asStateFlow()
 
@@ -86,10 +81,8 @@ class InspectorTaskViewModel @Inject constructor(
                     onSuccess = { tasks ->
                         Log.d(TAG, "Loaded ${tasks.size} tasks")
 
-                        // Load additional details for each task
-                        val tasksWithDetails = tasks.map { task ->
-                            loadTaskDetails(task)
-                        }
+                        // Load additional details for each task including draft reports
+                        val tasksWithDetails = loadTaskDetails(tasks)
 
                         _uiState.value = _uiState.value.copy(
                             isLoading = false,
@@ -121,7 +114,42 @@ class InspectorTaskViewModel @Inject constructor(
         }
     }
 
-    // NEW: Manual sync tasks
+    private suspend fun loadTaskDetails(tasks: List<Task>): List<TaskWithDetails> {
+        val tasksWithDetails = mutableListOf<TaskWithDetails>()
+
+        // Get branches
+        val branchesResult = branchRepository.getBranches()
+        val branches = branchesResult.getOrNull() ?: emptyList()
+
+        // Get supervisors
+        val usersResult = userRepository.getAllUsers()
+        val allUsers = usersResult.getOrNull() ?: emptyList()
+
+        // Process each task individually to get latest draft report for each task
+        tasks.forEach { task ->
+            val branch = branches.find { it.branchId == task.branchId }
+            val supervisor = allUsers.find { it.uId == task.supervisorId }
+
+            // Get latest draft report for this specific task
+            val draftReportsResult = reportRepository.getDraftReportByTaskId(task.taskId)
+            val latestDraftReport = draftReportsResult.getOrNull()
+
+            Log.d(TAG, "Task ${task.taskId} - Latest draft: ${latestDraftReport?.reportId}")
+
+            tasksWithDetails.add(
+                TaskWithDetails(
+                    task = task,
+                    branchName = branch?.branchName ?: "Unknown Branch",
+                    supervisorName = supervisor?.fullName ?: "Unknown Supervisor",
+                    hasDraft = latestDraftReport != null,
+                    draftReport = latestDraftReport
+                )
+            )
+        }
+
+        return tasksWithDetails
+    }
+
     fun syncTasks() {
         viewModelScope.launch {
             _syncState.value = TaskSyncUiState.Syncing
@@ -141,7 +169,6 @@ class InspectorTaskViewModel @Inject constructor(
         }
     }
 
-    // NEW: Get offline tasks info
     fun getOfflineTasksInfo() {
         viewModelScope.launch {
             val info = taskSyncService.getOfflineTasksInfo()
@@ -152,7 +179,6 @@ class InspectorTaskViewModel @Inject constructor(
         }
     }
 
-    // NEW: Observe sync progress
     private fun observeSyncProgress() {
         viewModelScope.launch {
             taskSyncService.syncProgress.collect { progress ->
@@ -166,12 +192,13 @@ class InspectorTaskViewModel @Inject constructor(
         }
     }
 
-    // NEW: Observe network state
     private fun observeNetworkState() {
         viewModelScope.launch {
-            networkMonitor.isConnected
-                .distinctUntilChanged()
-                .collect { isConnected ->
+            var previousState: Boolean? = null
+
+            networkMonitor.isConnected.collect { isConnected ->
+                // Only act on state changes
+                if (previousState != null && previousState != isConnected) {
                     _networkState.value = isConnected
                     _uiState.value = _uiState.value.copy(isOnline = isConnected)
 
@@ -181,43 +208,9 @@ class InspectorTaskViewModel @Inject constructor(
                         syncTasks()
                     }
                 }
+                previousState = isConnected
+            }
         }
-    }
-
-    private suspend fun loadTaskDetails(task: Task): TaskWithDetails {
-        var branch: com.phuonghai.inspection.domain.model.Branch? = null
-        var inspector: User? = null
-        var hasReport = false
-
-        try {
-            // Load branch info
-            branchRepository.getBranchById(task.branchId).fold(
-                onSuccess = { branchData -> branch = branchData },
-                onFailure = { Log.w(TAG, "Failed to load branch: ${task.branchId}") }
-            )
-
-            // Load inspector info
-            userRepository.getUserById(task.inspectorId).fold(
-                onSuccess = { userData -> inspector = userData },
-                onFailure = { Log.w(TAG, "Failed to load inspector: ${task.inspectorId}") }
-            )
-
-            // Check if report exists for this task
-            reportRepository.getDraftReportByTaskId(task.taskId).fold(
-                onSuccess = { report -> hasReport = report != null },
-                onFailure = { Log.w(TAG, "Failed to check report for task: ${task.taskId}") }
-            )
-
-        } catch (e: Exception) {
-            Log.e(TAG, "Error loading task details for ${task.taskId}", e)
-        }
-
-        return TaskWithDetails(
-            task = task,
-            branch = branch,
-            inspector = inspector,
-            hasReport = hasReport
-        )
     }
 
     fun updateTaskStatus(taskId: String, newStatus: TaskStatus) {
@@ -282,13 +275,15 @@ class InspectorTaskViewModel @Inject constructor(
             filtered = filtered.filter { taskWithDetails ->
                 taskWithDetails.task.title.contains(currentState.searchQuery, ignoreCase = true) ||
                         taskWithDetails.task.description.contains(currentState.searchQuery, ignoreCase = true) ||
-                        taskWithDetails.branch?.name?.contains(currentState.searchQuery, ignoreCase = true) == true
+                        taskWithDetails.branchName.contains(currentState.searchQuery, ignoreCase = true)
             }
         }
 
         // Apply priority filter
         if (currentState.selectedPriority != "All") {
-            filtered = filtered.filter { it.task.priority == currentState.selectedPriority }
+            filtered = filtered.filter {
+                it.task.priority.name == currentState.selectedPriority
+            }
         }
 
         // Apply status filter
@@ -322,6 +317,7 @@ class InspectorTaskViewModel @Inject constructor(
         }
 
         _filteredTasks.value = filtered
+        Log.d(TAG, "Applied filters: ${filtered.size} tasks after filtering")
     }
 
     fun clearError() {
@@ -331,9 +327,18 @@ class InspectorTaskViewModel @Inject constructor(
     fun clearSyncStatus() {
         _syncState.value = TaskSyncUiState.Idle
     }
+
+    // Helper methods for draft functionality
+    fun getDraftReportForTask(taskId: String): com.phuonghai.inspection.domain.model.Report? {
+        return _uiState.value.tasks.find { it.task.taskId == taskId }?.draftReport
+    }
+
+    fun taskHasDraft(taskId: String): Boolean {
+        return _uiState.value.tasks.find { it.task.taskId == taskId }?.hasDraft ?: false
+    }
 }
 
-// Updated UI State with offline support
+// UI State combining both sync and draft functionality
 data class InspectorTaskUiState(
     val isLoading: Boolean = false,
     val tasks: List<TaskWithDetails> = emptyList(),
@@ -343,12 +348,15 @@ data class InspectorTaskUiState(
     val selectedDateFilter: String = "All",
     val showError: Boolean = false,
     val errorMessage: String? = null,
-    val offlineTasksCount: Int = 0, // NEW
-    val hasOfflineTasks: Boolean = false, // NEW
-    val isOnline: Boolean = true // NEW
-)
+    val offlineTasksCount: Int = 0,
+    val hasOfflineTasks: Boolean = false,
+    val isOnline: Boolean = true
+) {
+    val showContent: Boolean get() = !isLoading && tasks.isNotEmpty()
+    val isEmpty: Boolean get() = !isLoading && tasks.isEmpty() && errorMessage == null
+}
 
-// NEW: Sync UI State
+// Sync UI State
 sealed class TaskSyncUiState {
     object Idle : TaskSyncUiState()
     object Syncing : TaskSyncUiState()
@@ -356,9 +364,11 @@ sealed class TaskSyncUiState {
     data class Error(val message: String) : TaskSyncUiState()
 }
 
+// TaskWithDetails with draft support
 data class TaskWithDetails(
     val task: Task,
-    val branch: com.phuonghai.inspection.domain.model.Branch?,
-    val inspector: User?,
-    val hasReport: Boolean
+    val branchName: String,
+    val supervisorName: String,
+    val hasDraft: Boolean = false,
+    val draftReport: com.phuonghai.inspection.domain.model.Report? = null
 )

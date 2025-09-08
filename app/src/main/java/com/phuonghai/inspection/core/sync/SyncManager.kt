@@ -2,18 +2,16 @@ package com.phuonghai.inspection.core.sync
 
 import android.content.Context
 import android.util.Log
-import androidx.lifecycle.LifecycleService
-import androidx.lifecycle.lifecycleScope
 import com.phuonghai.inspection.core.network.NetworkMonitor
 import com.phuonghai.inspection.domain.repository.IAuthRepository
-import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.launch
+import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.flow.first
 import javax.inject.Inject
+import javax.inject.Singleton
 
-@AndroidEntryPoint
+@Singleton
 class SyncManager @Inject constructor(
-    private val context: Context,
+    @ApplicationContext private val context: Context,
     private val networkMonitor: NetworkMonitor,
     private val authRepository: IAuthRepository,
     private val taskSyncService: TaskSyncService,
@@ -30,8 +28,7 @@ class SyncManager @Inject constructor(
         // Schedule periodic syncing
         schedulePeriodicSync()
 
-        // Start monitoring network changes
-        startNetworkMonitoring()
+        Log.d(TAG, "SyncManager initialized")
     }
 
     private fun schedulePeriodicSync() {
@@ -40,11 +37,6 @@ class SyncManager @Inject constructor(
         SyncWorker.schedulePeriodicSync(context) // For reports
 
         Log.d(TAG, "Periodic sync scheduled")
-    }
-
-    private fun startNetworkMonitoring() {
-        // This should be called from a lifecycle-aware component
-        Log.d(TAG, "Starting network monitoring for auto-sync")
     }
 
     suspend fun performFullSync(): FullSyncResult {
@@ -59,7 +51,7 @@ class SyncManager @Inject constructor(
             }
 
             // Check network
-            val isConnected = kotlinx.coroutines.flow.first(networkMonitor.isConnected)
+            val isConnected = networkMonitor.isConnected.first()
             if (!isConnected) {
                 Log.w(TAG, "No network connection for sync")
                 return FullSyncResult.Error("No network connection")

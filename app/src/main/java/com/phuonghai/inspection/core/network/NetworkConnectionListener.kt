@@ -6,7 +6,6 @@ import androidx.lifecycle.lifecycleScope
 import com.phuonghai.inspection.core.sync.TaskSyncService
 import com.phuonghai.inspection.core.sync.ReportSyncService
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -41,9 +40,11 @@ class NetworkConnectionListener : LifecycleService() {
         Log.d(TAG, "Starting network monitoring")
 
         lifecycleScope.launch {
-            networkMonitor.isConnected
-                .distinctUntilChanged()
-                .collect { isConnected ->
+            var previousState: Boolean? = null
+
+            networkMonitor.isConnected.collect { isConnected ->
+                // Only act on state changes
+                if (previousState != null && previousState != isConnected) {
                     if (isConnected) {
                         Log.d(TAG, "Network connected - starting auto sync")
                         onNetworkConnected()
@@ -52,6 +53,8 @@ class NetworkConnectionListener : LifecycleService() {
                         onNetworkDisconnected()
                     }
                 }
+                previousState = isConnected
+            }
         }
     }
 

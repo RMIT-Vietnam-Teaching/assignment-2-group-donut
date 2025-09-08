@@ -2,6 +2,7 @@ package com.phuonghai.inspection.data.local.entity
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import com.phuonghai.inspection.domain.common.Priority
 import com.phuonghai.inspection.domain.model.Task
 import com.phuonghai.inspection.domain.model.TaskStatus
 
@@ -9,19 +10,15 @@ import com.phuonghai.inspection.domain.model.TaskStatus
 data class LocalTaskEntity(
     @PrimaryKey
     val taskId: String,
+    val supervisorId: String,
     val inspectorId: String,
     val branchId: String,
     val title: String,
     val description: String,
-    val location: String,
-    val lat: String,
-    val lng: String,
+    val priority: String, // Priority as String
     val status: String, // TaskStatus as String
-    val priority: String,
-    val dueDate: Long, // Timestamp as Long
-    val createdAt: Long, // Timestamp as Long
-    val assignedAt: Long?, // Timestamp as Long
-    val completedAt: Long?, // Timestamp as Long
+    val dueDate: Long?, // Timestamp as Long (nullable)
+    val createdAt: Long?, // Timestamp as Long (nullable)
     val isDownloaded: Boolean = true, // Flag to track if task is downloaded for offline use
     val lastSyncAt: Long = System.currentTimeMillis() // Last time task was synced
 )
@@ -30,19 +27,15 @@ data class LocalTaskEntity(
 fun Task.toLocalEntity(): LocalTaskEntity {
     return LocalTaskEntity(
         taskId = this.taskId,
+        supervisorId = this.supervisorId,
         inspectorId = this.inspectorId,
         branchId = this.branchId,
         title = this.title,
         description = this.description,
-        location = this.location,
-        lat = this.lat,
-        lng = this.lng,
+        priority = this.priority.name,
         status = this.status.name,
-        priority = this.priority,
-        dueDate = this.dueDate?.seconds?.times(1000) ?: System.currentTimeMillis(),
-        createdAt = this.createdAt?.seconds?.times(1000) ?: System.currentTimeMillis(),
-        assignedAt = this.assignedAt?.seconds?.times(1000),
-        completedAt = this.completedAt?.seconds?.times(1000),
+        dueDate = this.dueDate?.seconds?.times(1000),
+        createdAt = this.createdAt?.seconds?.times(1000),
         isDownloaded = true,
         lastSyncAt = System.currentTimeMillis()
     )
@@ -51,18 +44,14 @@ fun Task.toLocalEntity(): LocalTaskEntity {
 fun LocalTaskEntity.toDomainModel(): Task {
     return Task(
         taskId = this.taskId,
+        supervisorId = this.supervisorId,
         inspectorId = this.inspectorId,
         branchId = this.branchId,
         title = this.title,
         description = this.description,
-        location = this.location,
-        lat = this.lat,
-        lng = this.lng,
+        priority = Priority.valueOf(this.priority),
         status = TaskStatus.valueOf(this.status),
-        priority = this.priority,
-        dueDate = com.google.firebase.Timestamp(this.dueDate / 1000, 0),
-        createdAt = com.google.firebase.Timestamp(this.createdAt / 1000, 0),
-        assignedAt = this.assignedAt?.let { com.google.firebase.Timestamp(it / 1000, 0) },
-        completedAt = this.completedAt?.let { com.google.firebase.Timestamp(it / 1000, 0) }
+        dueDate = this.dueDate?.let { com.google.firebase.Timestamp(it / 1000, 0) },
+        createdAt = this.createdAt?.let { com.google.firebase.Timestamp(it / 1000, 0) }
     )
 }

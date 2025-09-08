@@ -23,7 +23,6 @@ import com.phuonghai.inspection.domain.model.User
 import com.phuonghai.inspection.presentation.generalUI.ButtonUI
 import com.phuonghai.inspection.presentation.navigation.Screen
 import com.phuonghai.inspection.presentation.home.inspector.InspectorDashboardViewModel
-import com.phuonghai.inspection.presentation.components.SyncStatusComponent
 import com.phuonghai.inspection.presentation.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -50,7 +49,7 @@ fun InspectorDashboardScreen(
     )
 
     Scaffold(
-        containerColor = MaterialTheme.colorScheme.background, // ✅ Use theme background
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             TopAppBar(
                 title = {
@@ -96,7 +95,7 @@ fun InspectorDashboardScreen(
                 }
 
                 uiState.showError -> {
-                    ErrorContent(
+                    DashboardErrorContent(
                         message = uiState.errorMessage ?: "Có lỗi xảy ra",
                         onRetry = { viewModel.refreshDashboard() },
                         onDismiss = { viewModel.clearError() }
@@ -104,7 +103,7 @@ fun InspectorDashboardScreen(
                 }
 
                 else -> {
-                    DashboardContent(
+                    DashboardMainContent(
                         user = uiState.currentUser,
                         statistics = sampleStats,
                         recentReports = sampleReports,
@@ -118,7 +117,7 @@ fun InspectorDashboardScreen(
 }
 
 @Composable
-fun DashboardContent(
+fun DashboardMainContent(
     user: com.phuonghai.inspection.domain.model.User?,
     statistics: DashboardStatistics,
     recentReports: List<ReportItem>,
@@ -138,10 +137,7 @@ fun DashboardContent(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
-            // ✅ Add Sync Status Component
-            item {
-                SyncStatusComponent()
-            }
+            // REMOVED: SyncStatusComponent() - was causing parameter errors
 
             item {
                 InspectorInfoCard(user)
@@ -169,10 +165,10 @@ fun SummarySection(
     ) {
         Text(
             "Chào, ${user?.fullName ?: "Inspector"}",
-            fontSize = 24.sp, // Reduced from 28.sp
+            fontSize = 24.sp,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onBackground,
-            modifier = Modifier.padding(bottom = 16.dp) // Reduced from 24.dp
+            modifier = Modifier.padding(bottom = 16.dp)
         )
 
         // Statistics cards with your color scheme
@@ -196,13 +192,13 @@ fun SummarySection(
                 ReportCountCard(
                     "Đã\nduyệt",
                     statistics.approvedReports,
-                    StatusGreen, // ✅ Using your StatusGreen
+                    StatusGreen,
                     modifier = Modifier.weight(1f)
                 )
                 ReportCountCard(
                     "Từ\nchối",
                     statistics.rejectedReports,
-                    SafetyRed, // ✅ Using your SafetyRed
+                    SafetyRed,
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -215,13 +211,13 @@ fun SummarySection(
                 ReportCountCard(
                     "Needs\nAttention",
                     2,
-                    StatusOrange, // ✅ Using your StatusOrange
+                    StatusOrange,
                     modifier = Modifier.width(120.dp)
                 )
                 ReportCountCard(
                     "Nháp",
                     statistics.draftReports,
-                    StatusGray, // ✅ Using your StatusGray
+                    StatusGray,
                     modifier = Modifier.width(120.dp)
                 )
             }
@@ -451,7 +447,7 @@ fun EmptyDashboardView(onCreateReportClick: () -> Unit) {
 }
 
 @Composable
-fun ErrorContent(
+fun DashboardErrorContent(
     message: String,
     onRetry: () -> Unit,
     onDismiss: () -> Unit

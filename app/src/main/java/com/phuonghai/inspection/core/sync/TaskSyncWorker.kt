@@ -7,6 +7,7 @@ import androidx.work.*
 import com.phuonghai.inspection.core.network.NetworkMonitor
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
+import kotlinx.coroutines.flow.first
 import java.util.concurrent.TimeUnit
 
 @HiltWorker
@@ -82,11 +83,10 @@ class TaskSyncWorker @AssistedInject constructor(
             Log.d(TAG, "Task sync work started")
 
             // Check if we have network connection
-            kotlinx.coroutines.flow.first(networkMonitor.isConnected).let { isConnected ->
-                if (!isConnected) {
-                    Log.w(TAG, "No network connection, skipping sync")
-                    return Result.retry()
-                }
+            val isConnected = networkMonitor.isConnected.first()
+            if (!isConnected) {
+                Log.w(TAG, "No network connection, skipping sync")
+                return Result.retry()
             }
 
             // Perform the sync
