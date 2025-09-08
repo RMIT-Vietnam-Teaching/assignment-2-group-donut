@@ -36,6 +36,7 @@
             </intent-filter>
         </activity>
 
+        <!-- Google Maps API Key -->
         <meta-data
             android:name="com.google.android.geo.API_KEY"
             android:value="AIzaSyD-EEdM3Oks_LXAumGsCxAAfURC-FyFsP0" />
@@ -54,6 +55,16 @@
                 tools:node="remove" />
         </provider>
 
-    </application>
+        <!-- ✅ FileProvider (xuất file / share file PDF, ảnh, ...) -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.provider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths"/>
+        </provider>
 
+    </application>
 </manifest>
