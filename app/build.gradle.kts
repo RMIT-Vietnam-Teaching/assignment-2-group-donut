@@ -108,4 +108,9 @@ dependencies {
     // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.0")
+
+    // Export PDF
+    implementation("com.itextpdf:itext7-core:7.2.5")
+    implementation("com.squareup.okhttp3:okhttp:4.10.0") // for downloading images
+
 }
