@@ -47,6 +47,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import android.widget.Toast
+import androidx.compose.foundation.border
+import androidx.compose.foundation.shape.CircleShape
+import coil.compose.rememberAsyncImagePainter
 import com.phuonghai.inspection.R
 import com.phuonghai.inspection.presentation.generalUI.ButtonUI
 import com.phuonghai.inspection.presentation.navigation.Screen
@@ -59,6 +62,7 @@ fun InspectorProfileScreen(modifier: Modifier = Modifier, navController: NavCont
     val viewModel: InspectorProfileViewModel = hiltViewModel()
     val userState by viewModel.user.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
+    val supervisorName by viewModel.supervisorName.collectAsState()
     val signOutSuccess by viewModel.signOutSuccess.collectAsState() // ✅ ADD THIS
 
     val context = LocalContext.current
@@ -96,6 +100,8 @@ fun InspectorProfileScreen(modifier: Modifier = Modifier, navController: NavCont
         val fullName = userState?.fullName ?: ""
         val email = userState?.email ?: ""
         val contact = userState?.phoneNumber ?: ""
+        val role = userState?.role?.name ?: ""
+        val profileImageUrl = userState?.profileImageUrl ?: ""
         Box(
             modifier = modifier
                 .fillMaxSize()
@@ -119,16 +125,24 @@ fun InspectorProfileScreen(modifier: Modifier = Modifier, navController: NavCont
                         .clip(RoundedCornerShape(20.dp))
                         .background(Color.White)
                         .padding(30.dp)
-                        .height(350.dp)
+                        .height(420.dp)
                         .fillMaxWidth(),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
+
                     Image(
-                        painter = painterResource(id = R.drawable.account),
-                        contentDescription = null,
+                        painter = if (profileImageUrl.isNotBlank()) {
+                            rememberAsyncImagePainter(profileImageUrl)
+                        } else {
+                            painterResource(id = R.drawable.account)
+                        },
+                        contentDescription = "Profile Image",
                         contentScale = ContentScale.Crop,
-                        modifier = Modifier.size(140.dp)
+                        modifier = Modifier
+                            .size(140.dp)
+                            .clip(CircleShape) // 👌 round avatar style
+                            .border(2.dp, Color.Gray, CircleShape)
                     )
                     Text(
                         text = fullName,
@@ -171,7 +185,41 @@ fun InspectorProfileScreen(modifier: Modifier = Modifier, navController: NavCont
                             fontWeight = FontWeight.Light
                         )
                     }
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(5.dp)
+                    ) {
+                        Text(
+                            text = "Role: ",
+                            color = Color.Black,
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            role,
+                            color = Color.Gray,
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Light
+                        )
+                    }
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(5.dp)
+                    ) {
+                        Text(
+                            text = "Boss: ",
+                            color = Color.Black,
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            supervisorName,
+                            color = Color.Gray,
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Light
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(10.dp))
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceEvenly,
