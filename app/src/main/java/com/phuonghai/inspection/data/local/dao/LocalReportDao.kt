@@ -25,6 +25,9 @@ interface LocalReportDao {
     @Query("SELECT COUNT(*) FROM local_reports WHERE needsSync = 1")
     suspend fun getUnsyncedReportsCount(): Int
 
+    @Query("SELECT COUNT(*) FROM local_reports WHERE inspectorId = :inspectorId AND needsSync = 1")
+    suspend fun getUnsyncedReportsCountForInspector(inspectorId: String): Int
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertReport(report: LocalReportEntity)
 
@@ -53,7 +56,7 @@ interface LocalReportDao {
     suspend fun deleteOldSyncedReports(cutoffTime: Long)
 
     @Query(
-        "DELETE FROM local_reports WHERE inspectorId = :inspectorId AND reportId NOT IN (" +
+        "DELETE FROM local_reports WHERE inspectorId = :inspectorId AND needsSync = 0 AND reportId NOT IN (" +
                 "SELECT reportId FROM local_reports WHERE inspectorId = :inspectorId ORDER BY createdAt DESC LIMIT :limit)"
     )
     suspend fun trimReports(inspectorId: String, limit: Int)
