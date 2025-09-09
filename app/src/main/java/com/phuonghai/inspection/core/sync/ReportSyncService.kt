@@ -61,13 +61,17 @@ class ReportSyncService @Inject constructor(
 
                     // Convert to domain model and sync to Firebase
                     val domainReport = updatedReport.toDomainModel()
-                    val result = reportRepository.updateReport(domainReport)
+                    val result = reportRepository.createReport(domainReport)
 
                     result.fold(
-                        onSuccess = {
-                            // Mark as synced in local database
-                            localReportDao.markAsSynced(localReport.reportId)
-                            localReportDao.resetSyncRetryCount(localReport.reportId)
+                        onSuccess = { remoteId ->
+                            val syncedEntity = updatedReport.copy(
+                                reportId = remoteId,
+                                needsSync = false
+                            )
+                            localReportDao.deleteReportById(localReport.reportId)
+                            localReportDao.insertReport(syncedEntity)
+                            localReportDao.resetSyncRetryCount(remoteId)
 
                             // Clean up local media files after successful sync
                             cleanupLocalFiles(localReport)
