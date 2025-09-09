@@ -28,7 +28,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 @Singleton
 class OfflineReportRepository @Inject constructor(
     private val localReportDao: LocalReportDao,
-    private val onlineReportRepository: ReportRepositoryImpl,
+    private val onlineReportRepository: IReportRepository,
     private val networkMonitor: NetworkMonitor,
     private val fileManager: OfflineFileManager,
     @ApplicationContext private val context: Context
@@ -357,10 +357,15 @@ class OfflineReportRepository @Inject constructor(
                 val remoteReports = onlineReportRepository.getReportsByInspectorId(inspectorId).first()
 
                 remoteReports.forEach { report ->
-                    if (report.reportId !in unsyncedIds) {
-                        val entity = report.copy(syncStatus = SyncStatus.SYNCED).toLocalEntity()
-                        localReportDao.insertReport(entity)
+                    val localReport = localReportDao.getReportById(report.reportId)
+                    if (localReport?.needsSync == true) {
+                        // Skip overwriting local report with unsynced changes
+                        return@forEach
                     }
+
+                    val entity = report.copy(syncStatus = SyncStatus.SYNCED)
+                        .toLocalEntity()
+                    localReportDao.insertReport(entity)
                 }
                 val unsyncedCount = localReportDao.getUnsyncedReportsCountForInspector(inspectorId)
                 localReportDao.trimReports(inspectorId, 30 + unsyncedCount)
