@@ -1,9 +1,13 @@
 package com.phuonghai.inspection
 
 import android.app.Application
+import android.content.Intent
+import android.os.Build
 import android.util.Log
+import androidx.core.content.ContextCompat
 import androidx.work.Configuration
 import androidx.work.WorkManager
+import com.phuonghai.inspection.core.network.NetworkConnectionListener
 import com.phuonghai.inspection.core.sync.SyncManager
 import com.phuonghai.inspection.core.sync.TaskSyncWorker
 import dagger.hilt.android.HiltAndroidApp
@@ -22,6 +26,8 @@ class InspectionApp : Application() {
         private const val TAG = "InspectionApp"
     }
 
+    private var networkListenerStarted = false
+
     override fun onCreate() {
         super.onCreate()
         Log.d(TAG, "Application started")
@@ -31,6 +37,9 @@ class InspectionApp : Application() {
 
         // Initialize sync system
         initializeSync()
+
+        // Start service monitoring network connectivity
+        startNetworkListener()
     }
 
     private fun initializeWorkManager() {
@@ -61,5 +70,18 @@ class InspectionApp : Application() {
                 Log.e(TAG, "Error initializing sync system", e)
             }
         }
+    }
+
+    private fun startNetworkListener() {
+        if (networkListenerStarted) return
+
+        val intent = Intent(this, NetworkConnectionListener::class.java)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            ContextCompat.startForegroundService(this, intent)
+        } else {
+            startService(intent)
+        }
+        networkListenerStarted = true
+        Log.d(TAG, "NetworkConnectionListener service started")
     }
 }
