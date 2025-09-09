@@ -17,6 +17,8 @@ import com.phuonghai.inspection.domain.repository.IReportRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flow
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -43,7 +45,20 @@ class OfflineReportRepository @Inject constructor(
             if (isConnected && report.assignStatus != AssignStatus.DRAFT) {
                 // Online: Try to create report directly
                 Log.d(TAG, "Creating report online: ${report.title}")
-                onlineReportRepository.createReport(report)
+                val result = onlineReportRepository.createReport(report)
+
+                if (result.isSuccess) {
+                    val reportId = result.getOrNull()!!
+                    val localReport = report.copy(
+                        reportId = reportId,
+                        createdAt = report.createdAt ?: Timestamp.now(),
+                        syncStatus = SyncStatus.SYNCED
+                    )
+                    localReportDao.insertReport(localReport.toLocalEntity())
+                    localReportDao.trimReports(localReport.inspectorId, 30)
+                }
+
+                result
             } else {
                 // Offline or Draft: Save locally
                 Log.d(TAG, "Saving report offline: ${report.title}")
@@ -328,7 +343,22 @@ class OfflineReportRepository @Inject constructor(
     }
 
     override fun getReportsByInspectorId(inspectorId: String): Flow<List<Report>> {
-        return localReportDao.getReportsByInspectorId(inspectorId)
-            .map { entities -> entities.map { it.toDomainModel() } }
+        return flow {
+            val localReports = localReportDao.getReportsByInspectorId(inspectorId).first()
+            if (localReports.isEmpty() && networkMonitor.isConnected.first()) {
+                val remoteReports = onlineReportRepository.getReportsByInspectorId(inspectorId).first()
+                remoteReports.forEach { report ->
+                    val entity = report.copy(syncStatus = SyncStatus.SYNCED)
+                        .toLocalEntity()
+                    localReportDao.insertReport(entity)
+                }
+                localReportDao.trimReports(inspectorId, 30)
+            }
+
+            emitAll(
+                localReportDao.getReportsByInspectorId(inspectorId)
+                    .map { entities -> entities.map { it.toDomainModel() } }
+            )
+        }
     }
 }
