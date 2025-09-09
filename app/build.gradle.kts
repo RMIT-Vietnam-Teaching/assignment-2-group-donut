@@ -57,7 +57,7 @@ dependencies {
     // Core Android & Compose (đã được BOM quản lý version)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
-    implementation(libs.androidx.activity.compose) 
+    implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.ui)
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
@@ -124,8 +124,13 @@ dependencies {
     implementation("androidx.work:work-runtime-ktx:2.9.0")
     implementation("androidx.startup:startup-runtime:1.1.1")
 
-    // ======= PHẦN từ nhánh dev (giữ lại) =======
-    // Export PDF & network util
+    // Lifecycle components (service, viewmodel, livedata)
+    implementation("androidx.lifecycle:lifecycle-service:2.8.7")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.7")
+    implementation("androidx.lifecycle:lifecycle-livedata-ktx:2.8.7")
+    implementation("androidx.lifecycle:lifecycle-common-java8:2.8.7")
+
+    // Export PDF & network util (từ nhánh dev)
     implementation("com.itextpdf:itext7-core:7.2.5")
     implementation("com.squareup.okhttp3:okhttp:4.10.0")
 }

@@ -7,9 +7,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Assignment
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -37,40 +35,76 @@ fun InspectorTaskScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val filteredTasks by viewModel.filteredTasks.collectAsStateWithLifecycle()
+    val syncState by viewModel.syncState.collectAsStateWithLifecycle()
+    val networkState by viewModel.networkState.collectAsStateWithLifecycle()
 
-    // Load initial tasks
+    // Load initial tasks and offline info
     LaunchedEffect(Unit) {
         viewModel.loadTasks()
+        viewModel.getOfflineTasksInfo()
     }
+
     LaunchedEffect(navController) {
         val savedStateHandle = navController.currentBackStackEntry?.savedStateHandle
         savedStateHandle?.getStateFlow("should_refresh_tasks", false)?.collect { shouldRefresh ->
             if (shouldRefresh) {
                 Log.d("TaskScreen", "Refreshing tasks due to report submission")
                 viewModel.refreshTasks()
-                // Clear flag
                 savedStateHandle["should_refresh_tasks"] = false
             }
         }
     }
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
-                    Text(
-                        "My Tasks",
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = OffWhite
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            "My Tasks",
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = OffWhite
+                        )
+
+                        Spacer(modifier = Modifier.width(8.dp))
+                        TaskNetworkStatusIndicator(
+                            isOnline = networkState,
+                            modifier = Modifier
+                        )
+                    }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = DarkCharcoal
                 ),
                 actions = {
+                    IconButton(
+                        onClick = { viewModel.syncTasks() },
+                        enabled = networkState
+                    ) {
+                        when (syncState) {
+                            is TaskSyncUiState.Syncing -> {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(20.dp),
+                                    color = OffWhite,
+                                    strokeWidth = 2.dp
+                                )
+                            }
+                            else -> {
+                                Icon(
+                                    Icons.Default.Sync,
+                                    contentDescription = "Sync Tasks",
+                                    tint = if (networkState) OffWhite else OffWhite.copy(alpha = 0.5f)
+                                )
+                            }
+                        }
+                    }
+
                     IconButton(onClick = { viewModel.refreshTasks() }) {
                         Icon(
-                            imageVector = Icons.Default.Refresh,
+                            Icons.Default.Refresh,
                             contentDescription = "Refresh",
                             tint = SafetyYellow
                         )
@@ -88,6 +122,17 @@ fun InspectorTaskScreen(
         ) {
             Spacer(modifier = Modifier.height(16.dp))
 
+            // Sync Status Card
+            TaskSyncStatusCard(
+                syncState = syncState,
+                offlineTasksCount = uiState.offlineTasksCount,
+                isOnline = networkState,
+                onSyncClick = { viewModel.syncTasks() },
+                onDismissSync = { viewModel.clearSyncStatus() }
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
             // Search bar
             OutlinedTextField(
                 value = uiState.searchQuery,
@@ -103,12 +148,11 @@ fun InspectorTaskScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
+            // Filter Row
             Row(
-                modifier = Modifier
-                    .fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                // Priority
                 DropdownFilter(
                     label = "Priority",
                     options = listOf("All", "HIGH", "NORMAL", "LOW"),
@@ -117,7 +161,6 @@ fun InspectorTaskScreen(
                     modifier = Modifier.weight(1f)
                 )
 
-                // Status
                 DropdownFilter(
                     label = "Status",
                     options = listOf("All", "ASSIGNED", "IN_PROGRESS", "COMPLETED", "CANCELLED", "OVERDUE"),
@@ -126,7 +169,6 @@ fun InspectorTaskScreen(
                     modifier = Modifier.weight(1f)
                 )
 
-                // Due Date
                 DropdownFilter(
                     label = "Due Date",
                     options = listOf("All", "Today", "This Week", "This Month"),
@@ -157,8 +199,11 @@ fun InspectorTaskScreen(
                     )
                 }
 
-                uiState.isEmpty -> {
-                    EmptyTasksContent()
+                filteredTasks.isEmpty() -> {
+                    TaskEmptyContent(
+                        isOnline = networkState,
+                        onRetry = { viewModel.refreshTasks() }
+                    )
                 }
 
                 else -> {
@@ -191,6 +236,360 @@ fun InspectorTaskScreen(
                     }
                 }
             }
+        }
+    }
+}
+
+// Task-specific Sync Status Card
+@Composable
+fun TaskSyncStatusCard(
+    syncState: TaskSyncUiState,
+    offlineTasksCount: Int,
+    isOnline: Boolean,
+    onSyncClick: () -> Unit,
+    onDismissSync: () -> Unit
+) {
+    if (syncState == TaskSyncUiState.Idle && isOnline && offlineTasksCount == 0) {
+        return
+    }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = when (syncState) {
+                is TaskSyncUiState.Success -> Color(0xFF4CAF50).copy(alpha = 0.1f)
+                is TaskSyncUiState.Error -> Color(0xFFF44336).copy(alpha = 0.1f)
+                is TaskSyncUiState.Syncing -> Color(0xFF2196F3).copy(alpha = 0.1f)
+                else -> if (isOnline) Color.Transparent else Color(0xFFFF9800).copy(alpha = 0.1f)
+            }
+        ),
+        border = BorderStroke(
+            width = 1.dp,
+            color = when (syncState) {
+                is TaskSyncUiState.Success -> Color(0xFF4CAF50)
+                is TaskSyncUiState.Error -> Color(0xFFF44336)
+                is TaskSyncUiState.Syncing -> Color(0xFF2196F3)
+                else -> if (isOnline) Color.Gray.copy(alpha = 0.3f) else Color(0xFFFF9800)
+            }
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            when (syncState) {
+                is TaskSyncUiState.Idle -> {
+                    if (!isOnline && offlineTasksCount > 0) {
+                        TaskOfflineContent(
+                            taskCount = offlineTasksCount,
+                            onSyncClick = onSyncClick
+                        )
+                    } else if (isOnline && offlineTasksCount > 0) {
+                        TaskOnlineContent(
+                            taskCount = offlineTasksCount,
+                            onSyncClick = onSyncClick
+                        )
+                    }
+                }
+
+                is TaskSyncUiState.Syncing -> {
+                    TaskSyncingContent()
+                }
+
+                is TaskSyncUiState.Success -> {
+                    TaskSuccessContent(
+                        taskCount = syncState.taskCount,
+                        onDismiss = onDismissSync
+                    )
+                }
+
+                is TaskSyncUiState.Error -> {
+                    TaskErrorSyncContent(
+                        message = syncState.message,
+                        onRetry = onSyncClick,
+                        onDismiss = onDismissSync
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TaskOfflineContent(
+    taskCount: Int,
+    onSyncClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                Icons.Default.CloudOff,
+                contentDescription = null,
+                tint = Color(0xFFFF9800)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Column {
+                Text(
+                    text = "Offline Mode",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = "$taskCount tasks available offline",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.Gray
+                )
+            }
+        }
+        TextButton(
+            onClick = onSyncClick,
+            enabled = false
+        ) {
+            Text("Sync when online")
+        }
+    }
+}
+
+@Composable
+private fun TaskOnlineContent(
+    taskCount: Int,
+    onSyncClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                Icons.Default.Cloud,
+                contentDescription = null,
+                tint = Color(0xFF4CAF50)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Column {
+                Text(
+                    text = "Online",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = "$taskCount tasks cached locally",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.Gray
+                )
+            }
+        }
+        Button(
+            onClick = onSyncClick,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = SafetyYellow,
+                contentColor = DarkCharcoal
+            )
+        ) {
+            Text("Sync Now")
+        }
+    }
+}
+
+@Composable
+private fun TaskSyncingContent() {
+    Row(
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        CircularProgressIndicator(
+            modifier = Modifier.size(20.dp),
+            color = Color(0xFF2196F3),
+            strokeWidth = 2.dp
+        )
+        Spacer(modifier = Modifier.width(12.dp))
+        Text(
+            text = "Syncing tasks...",
+            style = MaterialTheme.typography.titleMedium
+        )
+    }
+}
+
+@Composable
+private fun TaskSuccessContent(
+    taskCount: Int,
+    onDismiss: () -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                Icons.Default.CheckCircle,
+                contentDescription = null,
+                tint = Color(0xFF4CAF50)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = "Sync successful: $taskCount tasks updated",
+                style = MaterialTheme.typography.titleMedium
+            )
+        }
+        IconButton(onClick = onDismiss) {
+            Icon(
+                Icons.Default.Close,
+                contentDescription = "Close",
+                tint = Color.Gray
+            )
+        }
+    }
+}
+
+@Composable
+private fun TaskErrorSyncContent(
+    message: String,
+    onRetry: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    Column {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    Icons.Default.Error,
+                    contentDescription = null,
+                    tint = Color(0xFFF44336)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Sync failed",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = Color(0xFFF44336)
+                )
+            }
+            IconButton(onClick = onDismiss) {
+                Icon(
+                    Icons.Default.Close,
+                    contentDescription = "Close",
+                    tint = Color.Gray
+                )
+            }
+        }
+
+        Text(
+            text = message,
+            style = MaterialTheme.typography.bodyMedium,
+            color = Color.Gray,
+            modifier = Modifier.padding(top = 4.dp)
+        )
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 8.dp),
+            horizontalArrangement = Arrangement.End
+        ) {
+            TextButton(onClick = onRetry) {
+                Text(
+                    "Try Again",
+                    color = Color(0xFF2196F3)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun TaskNetworkStatusIndicator(
+    isOnline: Boolean,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = modifier
+    ) {
+        Icon(
+            imageVector = if (isOnline) Icons.Default.Cloud else Icons.Default.CloudOff,
+            contentDescription = if (isOnline) "Online" else "Offline",
+            tint = if (isOnline) Color(0xFF4CAF50) else Color(0xFFFF9800),
+            modifier = Modifier.size(16.dp)
+        )
+        Spacer(modifier = Modifier.width(4.dp))
+        Text(
+            text = if (isOnline) "Online" else "Offline",
+            style = MaterialTheme.typography.labelSmall,
+            color = if (isOnline) Color(0xFF4CAF50) else Color(0xFFFF9800)
+        )
+    }
+}
+
+@Composable
+fun TaskEmptyContent(
+    isOnline: Boolean,
+    onRetry: () -> Unit
+) {
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Icon(
+            imageVector = if (isOnline) Icons.Default.Assignment else Icons.Default.CloudOff,
+            contentDescription = null,
+            modifier = Modifier.size(64.dp),
+            tint = Color.Gray
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Text(
+            text = if (isOnline) "No tasks found" else "No tasks available offline",
+            style = MaterialTheme.typography.titleLarge,
+            color = Color.Gray,
+            textAlign = TextAlign.Center
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Text(
+            text = if (isOnline)
+                "Try adjusting your filters or refresh to load new tasks"
+            else
+                "Connect to internet to download your tasks",
+            style = MaterialTheme.typography.bodyMedium,
+            color = Color.Gray,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(horizontal = 32.dp)
+        )
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Button(
+            onClick = onRetry,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = SafetyYellow,
+                contentColor = DarkCharcoal
+            ),
+            enabled = isOnline
+        ) {
+            Icon(
+                Icons.Default.Refresh,
+                contentDescription = null,
+                modifier = Modifier.size(18.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(if (isOnline) "Refresh" else "Refresh when online")
         }
     }
 }
@@ -356,7 +755,7 @@ fun TaskCard(
                     color = if (isTaskOverdue(task)) SafetyRed else TextSecondary
                 )
 
-                // ✅ HIỂN THỊ THÔNG TIN DRAFT NẾU CÓ
+                // Draft info display
                 if (hasDraft && taskWithDetails.draftReport != null) {
                     val draftReport = taskWithDetails.draftReport!!
                     Text(
@@ -433,7 +832,7 @@ fun TaskCard(
                             }
                         }
 
-                        // ✅ BUTTON TEXT DỰA TRÊN DRAFT STATUS
+                        // Report button with draft functionality
                         Button(
                             onClick = if (hasDraft) onContinueDraftClick else onCreateReportClick,
                             colors = ButtonDefaults.buttonColors(
@@ -452,39 +851,6 @@ fun TaskCard(
                 }
             }
         }
-    }
-}
-
-@Composable
-fun EmptyTasksContent() {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(32.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Icon(
-            imageVector = Icons.Default.Assignment,
-            contentDescription = "No Tasks",
-            modifier = Modifier.size(64.dp),
-            tint = TextSecondary
-        )
-        Spacer(modifier = Modifier.height(16.dp))
-        Text(
-            text = "No Tasks Available",
-            style = MaterialTheme.typography.titleMedium,
-            color = OffWhite,
-            fontSize = 20.sp,
-            fontWeight = FontWeight.Bold
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(
-            text = "You don't have any tasks assigned yet. Check back later or contact your supervisor.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = TextSecondary,
-            textAlign = TextAlign.Center
-        )
     }
 }
 
