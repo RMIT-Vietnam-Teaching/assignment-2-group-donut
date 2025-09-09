@@ -345,12 +345,16 @@ class OfflineReportRepository @Inject constructor(
     override fun getReportsByInspectorId(inspectorId: String): Flow<List<Report>> {
         return flow {
             val localReports = localReportDao.getReportsByInspectorId(inspectorId).first()
-            if (localReports.isEmpty() && networkMonitor.isConnected.first()) {
+
+            if (networkMonitor.isConnected.first()) {
+                val unsyncedIds = localReports.filter { it.needsSync }.map { it.reportId }.toSet()
                 val remoteReports = onlineReportRepository.getReportsByInspectorId(inspectorId).first()
+
                 remoteReports.forEach { report ->
-                    val entity = report.copy(syncStatus = SyncStatus.SYNCED)
-                        .toLocalEntity()
-                    localReportDao.insertReport(entity)
+                    if (report.reportId !in unsyncedIds) {
+                        val entity = report.copy(syncStatus = SyncStatus.SYNCED).toLocalEntity()
+                        localReportDao.insertReport(entity)
+                    }
                 }
                 localReportDao.trimReports(inspectorId, 30)
             }
