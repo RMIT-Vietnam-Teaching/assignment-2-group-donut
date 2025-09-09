@@ -2,6 +2,7 @@ package com.phuonghai.inspection.domain.repository
 
 import android.net.Uri
 import com.phuonghai.inspection.domain.model.Report
+import kotlinx.coroutines.flow.Flow
 
 interface IReportRepository {
     suspend fun createReport(report: Report): Result<String>
@@ -14,4 +15,5 @@ interface IReportRepository {
     suspend fun deleteDraftReport(reportId: String): Result<Unit>
     suspend fun getReportsBySupervisorId(supervisorId: String): Result<List<Report>>
     suspend fun updateStatus(reportId: String, status: String): Result<Unit>
+    fun getReportsByInspectorId(inspectorId: String): Flow<List<Report>>
 }
