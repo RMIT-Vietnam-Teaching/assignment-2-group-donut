@@ -45,7 +45,10 @@ class OfflineReportRepository @Inject constructor(
             if (isConnected && report.assignStatus != AssignStatus.DRAFT) {
                 // Online: Try to create report directly
                 Log.d(TAG, "Creating report online: ${report.title}")
-                val result = onlineReportRepository.createReport(report)
+
+                // Ensure the remote repository always receives a synced report
+                val syncedReport = report.copy(syncStatus = SyncStatus.SYNCED)
+                val result = onlineReportRepository.createReport(syncedReport)
 
                 if (result.isSuccess) {
                     val reportId = result.getOrNull()!!
@@ -54,7 +57,8 @@ class OfflineReportRepository @Inject constructor(
                         createdAt = report.createdAt ?: Timestamp.now(),
                         syncStatus = SyncStatus.SYNCED
                     )
-                    localReportDao.insertReport(localReport.toLocalEntity())
+                    // Explicitly store that this report does not need syncing
+                    localReportDao.insertReport(localReport.toLocalEntity().copy(needsSync = false))
                     localReportDao.trimReports(localReport.inspectorId, 30)
                 }
 

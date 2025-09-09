@@ -9,6 +9,7 @@ import com.google.firebase.firestore.Query
 import com.google.firebase.storage.storage
 import com.phuonghai.inspection.domain.model.AssignStatus
 import com.phuonghai.inspection.domain.model.Report
+import com.phuonghai.inspection.domain.model.SyncStatus
 import com.phuonghai.inspection.domain.repository.IReportRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -32,7 +33,8 @@ class ReportRepositoryImpl @Inject constructor(
             val reportId = UUID.randomUUID().toString()
             val reportWithId = report.copy(
                 reportId = reportId,
-                createdAt = Timestamp.now()
+                createdAt = Timestamp.now(),
+                syncStatus = SyncStatus.SYNCED
             )
 
             firestore.collection(REPORTS_COLLECTION)
