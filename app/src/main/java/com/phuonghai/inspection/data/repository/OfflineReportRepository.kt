@@ -45,7 +45,10 @@ class OfflineReportRepository @Inject constructor(
             if (isConnected && report.assignStatus != AssignStatus.DRAFT) {
                 // Online: Try to create report directly
                 Log.d(TAG, "Creating report online: ${report.title}")
-                val result = onlineReportRepository.createReport(report)
+
+                // Ensure the remote repository always receives a synced report
+                val syncedReport = report.copy(syncStatus = SyncStatus.SYNCED)
+                val result = onlineReportRepository.createReport(syncedReport)
 
                 if (result.isSuccess) {
                     val reportId = result.getOrNull()!!
@@ -54,7 +57,8 @@ class OfflineReportRepository @Inject constructor(
                         createdAt = report.createdAt ?: Timestamp.now(),
                         syncStatus = SyncStatus.SYNCED
                     )
-                    localReportDao.insertReport(localReport.toLocalEntity())
+                    // Explicitly store that this report does not need syncing
+                    localReportDao.insertReport(localReport.toLocalEntity().copy(needsSync = false))
                     localReportDao.trimReports(localReport.inspectorId, 30)
                 }
 
@@ -345,8 +349,11 @@ class OfflineReportRepository @Inject constructor(
     override fun getReportsByInspectorId(inspectorId: String): Flow<List<Report>> {
         return flow {
             val localReports = localReportDao.getReportsByInspectorId(inspectorId).first()
-            if (localReports.isEmpty() && networkMonitor.isConnected.first()) {
+
+            if (networkMonitor.isConnected.first()) {
+                val unsyncedIds = localReports.filter { it.needsSync }.map { it.reportId }.toSet()
                 val remoteReports = onlineReportRepository.getReportsByInspectorId(inspectorId).first()
+
                 remoteReports.forEach { report ->
                     val localReport = localReportDao.getReportById(report.reportId)
                     if (localReport?.needsSync == true) {
