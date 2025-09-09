@@ -14,7 +14,9 @@ import com.phuonghai.inspection.domain.model.AssignStatus
 import com.phuonghai.inspection.domain.model.Report
 import com.phuonghai.inspection.domain.model.SyncStatus
 import com.phuonghai.inspection.domain.repository.IReportRepository
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -55,6 +57,7 @@ class OfflineReportRepository @Inject constructor(
                 // Save to local database
                 val localEntity = reportWithId.toLocalEntity()
                 localReportDao.insertReport(localEntity)
+                localReportDao.trimReports(reportWithId.inspectorId, 30)
 
                 // Schedule sync if not connected and not a draft
                 if (!isConnected && report.assignStatus != AssignStatus.DRAFT) {
@@ -300,6 +303,7 @@ class OfflineReportRepository @Inject constructor(
                 )
 
                 localReportDao.insertReport(localEntity)
+                localReportDao.trimReports(reportWithMedia.inspectorId, 30)
 
                 // Schedule sync if not a draft
                 if (report.assignStatus != AssignStatus.DRAFT) {
@@ -321,5 +325,10 @@ class OfflineReportRepository @Inject constructor(
 
     override suspend fun updateStatus(reportId: String, status: String): Result<Unit> {
         return onlineReportRepository.updateStatus(reportId, status)
+    }
+
+    override fun getReportsByInspectorId(inspectorId: String): Flow<List<Report>> {
+        return localReportDao.getReportsByInspectorId(inspectorId)
+            .map { entities -> entities.map { it.toDomainModel() } }
     }
 }

@@ -7,7 +7,7 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface LocalReportDao {
 
-    @Query("SELECT * FROM local_reports WHERE inspectorId = :inspectorId")
+    @Query("SELECT * FROM local_reports WHERE inspectorId = :inspectorId ORDER BY createdAt DESC")
     fun getReportsByInspectorId(inspectorId: String): Flow<List<LocalReportEntity>>
 
     @Query("SELECT * FROM local_reports WHERE reportId = :reportId")
@@ -51,4 +51,10 @@ interface LocalReportDao {
 
     @Query("DELETE FROM local_reports WHERE createdAt < :cutoffTime AND needsSync = 0")
     suspend fun deleteOldSyncedReports(cutoffTime: Long)
+
+    @Query(
+        "DELETE FROM local_reports WHERE inspectorId = :inspectorId AND reportId NOT IN (" +
+                "SELECT reportId FROM local_reports WHERE inspectorId = :inspectorId ORDER BY createdAt DESC LIMIT :limit)"
+    )
+    suspend fun trimReports(inspectorId: String, limit: Int)
 }
