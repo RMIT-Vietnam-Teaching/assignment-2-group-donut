@@ -57,9 +57,9 @@ class OfflineReportRepository @Inject constructor(
                         createdAt = report.createdAt ?: Timestamp.now(),
                         syncStatus = SyncStatus.SYNCED
                     )
-                    // Explicitly store that this report does not need syncing
-                    localReportDao.insertReport(localReport.toLocalEntity().copy(needsSync = false))
-                    localReportDao.trimReports(localReport.inspectorId, 30)
+                    localReportDao.insertReport(localReport.toLocalEntity())
+                    val unsyncedCount = localReportDao.getUnsyncedReportsCountForInspector(localReport.inspectorId)
+                    localReportDao.trimReports(localReport.inspectorId, 30 + unsyncedCount)
                 }
 
                 result
@@ -76,7 +76,8 @@ class OfflineReportRepository @Inject constructor(
                 // Save to local database
                 val localEntity = reportWithId.toLocalEntity()
                 localReportDao.insertReport(localEntity)
-                localReportDao.trimReports(reportWithId.inspectorId, 30)
+                val unsyncedCount = localReportDao.getUnsyncedReportsCountForInspector(reportWithId.inspectorId)
+                localReportDao.trimReports(reportWithId.inspectorId, 30 + unsyncedCount)
 
                 // Schedule sync if not connected and not a draft
                 if (!isConnected && report.assignStatus != AssignStatus.DRAFT) {
@@ -322,7 +323,8 @@ class OfflineReportRepository @Inject constructor(
                 )
 
                 localReportDao.insertReport(localEntity)
-                localReportDao.trimReports(reportWithMedia.inspectorId, 30)
+                val unsyncedCount = localReportDao.getUnsyncedReportsCountForInspector(reportWithMedia.inspectorId)
+                localReportDao.trimReports(reportWithMedia.inspectorId, 30 + unsyncedCount)
 
                 // Schedule sync if not a draft
                 if (report.assignStatus != AssignStatus.DRAFT) {
@@ -360,7 +362,8 @@ class OfflineReportRepository @Inject constructor(
                         localReportDao.insertReport(entity)
                     }
                 }
-                localReportDao.trimReports(inspectorId, 30)
+                val unsyncedCount = localReportDao.getUnsyncedReportsCountForInspector(inspectorId)
+                localReportDao.trimReports(inspectorId, 30 + unsyncedCount)
             }
 
             emitAll(
