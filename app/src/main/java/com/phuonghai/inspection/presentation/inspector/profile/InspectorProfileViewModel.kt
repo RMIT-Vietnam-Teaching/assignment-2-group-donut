@@ -22,6 +22,8 @@ class InspectorProfileViewModel @Inject constructor(
     companion object {
         private const val TAG = "InspectorProfileVM"
     }
+    private val _supervisorName = MutableStateFlow("")
+    val supervisorName = _supervisorName.asStateFlow()
 
     val currentUserId = FirebaseAuth.getInstance().uid ?: ""
 
@@ -40,12 +42,24 @@ class InspectorProfileViewModel @Inject constructor(
             _isLoading.value = true
             try {
                 val result = getUserInformationUseCase(currentUserId)
-                _user.value = result.getOrNull()
+                val inspector = result.getOrNull()
+                _user.value = inspector
+
+                // ✅ Load supervisor name if inspector has a supervisorId
+                inspector?.supervisorId?.let { supervisorId ->
+                    val supervisorResult = getUserInformationUseCase(supervisorId)
+                    supervisorResult.onSuccess { supervisor ->
+                        _supervisorName.value = supervisor?.fullName ?: ""
+                    }.onFailure { e ->
+                        Log.e(TAG, "Failed to load supervisor name", e)
+                    }
+                }
             } finally {
                 _isLoading.value = false
             }
         }
     }
+
 
     fun signOut() {
         viewModelScope.launch {
