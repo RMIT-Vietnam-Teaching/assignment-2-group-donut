@@ -33,6 +33,8 @@ import com.phuonghai.inspection.domain.repository.IUserRepository
 import com.phuonghai.inspection.domain.usecase.auth.SignOutUseCase
 import com.phuonghai.inspection.domain.usecase.GetInspectorTasksUseCase
 import com.phuonghai.inspection.domain.usecase.UpdateTaskStatusUseCase
+import com.phuonghai.inspection.presentation.inspector.historyreport.InspectorHistoryViewModel
+import dagger.Binds
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -138,6 +140,7 @@ object AppModule {
         )
     }
 
+    // 🆕 UPDATED: Use improved OfflineTaskRepository
     @Provides
     @Singleton
     fun provideTaskRepository(
@@ -175,7 +178,23 @@ object AppModule {
         return ChatMessageRepositoryImpl(firebaseDatabase)
     }
 
-    // ✅ Sync Services
+    // 🆕 UPDATED: Improved Sync Services
+    @Provides
+    @Singleton
+    fun provideReportSyncService(
+        localReportDao: LocalReportDao,
+        reportRepository: IReportRepository,
+        networkMonitor: NetworkMonitor,
+        fileManager: OfflineFileManager
+    ): ReportSyncService {
+        return ReportSyncService(
+            localReportDao,
+            reportRepository,
+            networkMonitor,
+            fileManager
+        )
+    }
+
     @Provides
     @Singleton
     fun provideTaskSyncService(
@@ -192,16 +211,7 @@ object AppModule {
         )
     }
 
-    @Provides
-    @Singleton
-    fun provideReportSyncService(
-        localReportDao: LocalReportDao,
-        reportRepository: IReportRepository,
-        fileManager: OfflineFileManager
-    ): ReportSyncService {
-        return ReportSyncService(localReportDao, reportRepository, fileManager)
-    }
-
+    // 🆕 UPDATED: SyncManager with improved services
     @Provides
     @Singleton
     fun provideSyncManager(
@@ -237,5 +247,20 @@ object AppModule {
     @Singleton
     fun provideUpdateTaskStatusUseCase(taskRepository: ITaskRepository): UpdateTaskStatusUseCase {
         return UpdateTaskStatusUseCase(taskRepository)
+    }
+
+    // 🆕 Updated History ViewModel
+    @Provides
+    @Singleton
+    fun provideInspectorHistoryViewModel(
+        reportRepository: IReportRepository,
+        localReportDao: LocalReportDao,
+        networkMonitor: NetworkMonitor
+    ): InspectorHistoryViewModel {
+        return InspectorHistoryViewModel(
+            reportRepository,
+            localReportDao,
+            networkMonitor
+        )
     }
 }

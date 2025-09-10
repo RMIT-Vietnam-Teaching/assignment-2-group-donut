@@ -28,6 +28,10 @@ import java.util.*
 fun InspectorHistoryReportScreen(navController: NavController) {
     val viewModel: InspectorHistoryViewModel = hiltViewModel()
     val reports by viewModel.reports.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
+    val isOnline by viewModel.isOnline.collectAsState()
+    val syncStatus by viewModel.syncStatus.collectAsState()
+    val errorMessage by viewModel.errorMessage.collectAsState()
 
     Scaffold(
         topBar = {

@@ -24,61 +24,120 @@ class OfflineTaskRepository @Inject constructor(
 
     companion object {
         private const val TAG = "OfflineTaskRepository"
+        private const val CACHE_EXPIRY_HOURS = 24
     }
 
-    override suspend fun createTask(task: Task): Result<Unit> {
+    override suspend fun getTasksByInspectorId(inspectorId: String): Result<List<Task>> {
         return try {
             val isConnected = networkMonitor.isConnected.first()
 
+            // Luôn lấy local data trước
+            val localTasks = getLocalTasksForInspector(inspectorId)
+            Log.d(TAG, "Found ${localTasks.size} local tasks for inspector: $inspectorId")
+
             if (isConnected) {
-                // Online: Create task directly
-                Log.d(TAG, "Creating task online: ${task.title}")
-                val result = onlineTaskRepository.createTask(task)
+                // Online: Fetch và cache mới
+                Log.d(TAG, "Online mode - fetching latest tasks")
 
-                if (result.isSuccess) {
-                    // Also save locally for offline access
-                    val localEntity = task.toLocalEntity()
-                    localTaskDao.insertTask(localEntity)
+                try {
+                    val onlineResult = onlineTaskRepository.getTasksByInspectorId(inspectorId)
+
+                    onlineResult.fold(
+                        onSuccess = { onlineTasks ->
+                            // Cache all tasks locally với timestamp
+                            cacheTasksForInspector(inspectorId, onlineTasks)
+                            Log.d(TAG, "Successfully cached ${onlineTasks.size} tasks")
+                            Result.success(onlineTasks)
+                        },
+                        onFailure = { error ->
+                            Log.w(TAG, "Online fetch failed, using cached data: ${error.message}")
+                            // Return cached data if online fails
+                            Result.success(localTasks)
+                        }
+                    )
+                } catch (e: Exception) {
+                    Log.e(TAG, "Exception during online fetch: ${e.message}")
+                    Result.success(localTasks)
                 }
-
-                result
             } else {
-                // Offline: This should rarely happen for task creation
-                // Tasks are usually created by supervisors, not inspectors
-                Log.w(TAG, "Cannot create task offline: ${task.title}")
-                Result.failure(Exception("Cannot create task while offline"))
+                // Offline mode
+                Log.d(TAG, "Offline mode - using cached tasks")
+
+                if (localTasks.isEmpty()) {
+                    Result.failure(Exception("Không có task nào được cache offline. Vui lòng kết nối internet để đồng bộ dữ liệu."))
+                } else {
+                    Result.success(localTasks)
+                }
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Error creating task", e)
+            Log.e(TAG, "Error in getTasksByInspectorId", e)
             Result.failure(e)
+        }
+    }
+
+    private suspend fun getLocalTasksForInspector(inspectorId: String): List<Task> {
+        return try {
+            val localEntities = localTaskDao.getTasksByInspectorIdSorted(inspectorId)
+            localEntities.map { it.toDomainModel() }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error getting local tasks", e)
+            emptyList()
+        }
+    }
+
+    private suspend fun cacheTasksForInspector(inspectorId: String, tasks: List<Task>) {
+        try {
+            val currentTime = System.currentTimeMillis()
+
+            // Delete old cached tasks for this inspector
+            localTaskDao.deleteTasksByInspectorId(inspectorId)
+
+            // Insert new tasks with cache timestamp
+            val entitiesToInsert = tasks.map { task ->
+                task.toLocalEntity().copy(
+                    cacheTimestamp = currentTime
+                )
+            }
+
+            localTaskDao.insertTasks(entitiesToInsert)
+
+            Log.d(TAG, "Cached ${tasks.size} tasks for inspector: $inspectorId")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error caching tasks", e)
         }
     }
 
     override suspend fun getTask(taskId: String): Result<Task> {
         return try {
-            // First try to get from local database
+            // Try local first
             val localTask = localTaskDao.getTaskById(taskId)
-            if (localTask != null) {
+            if (localTask != null && !isTaskCacheExpired(localTask.cacheTimestamp)) {
                 Log.d(TAG, "Found task locally: $taskId")
                 return Result.success(localTask.toDomainModel())
             }
 
-            // If not found locally and connected, try online
+            // If not found locally or expired, try online
             val isConnected = networkMonitor.isConnected.first()
             if (isConnected) {
                 Log.d(TAG, "Fetching task online: $taskId")
                 val result = onlineTaskRepository.getTask(taskId)
 
-                // Cache the result locally if successful
+                // Cache the result if successful
                 result.getOrNull()?.let { task ->
-                    val localEntity = task.toLocalEntity()
-                    localTaskDao.insertTask(localEntity)
+                    val entity = task.toLocalEntity().copy(
+                        cacheTimestamp = System.currentTimeMillis()
+                    )
+                    localTaskDao.insertTask(entity)
                 }
 
                 result
             } else {
-                Log.d(TAG, "Task not found locally and no connection: $taskId")
-                Result.failure(Exception("Task not found"))
+                if (localTask != null) {
+                    Log.d(TAG, "Using expired cache for task: $taskId")
+                    Result.success(localTask.toDomainModel())
+                } else {
+                    Result.failure(Exception("Task not found offline"))
+                }
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error getting task", e)
@@ -86,36 +145,39 @@ class OfflineTaskRepository @Inject constructor(
         }
     }
 
-    override suspend fun getTasksByInspectorId(inspectorId: String): Result<List<Task>> {
+    private fun isTaskCacheExpired(cacheTimestamp: Long): Boolean {
+        val currentTime = System.currentTimeMillis()
+        val expiryTime = CACHE_EXPIRY_HOURS * 60 * 60 * 1000L
+        return (currentTime - cacheTimestamp) > expiryTime
+    }
+
+    override suspend fun createTask(task: Task): Result<Unit> {
         return try {
             val isConnected = networkMonitor.isConnected.first()
 
             if (isConnected) {
-                // Online: Fetch latest tasks and cache them
-                Log.d(TAG, "Fetching tasks online for inspector: $inspectorId")
-                val onlineResult = onlineTaskRepository.getTasksByInspectorId(inspectorId)
-
-                onlineResult.getOrNull()?.let { tasks ->
-                    // Cache all tasks locally for offline access
-                    val localEntities = tasks.map { it.toLocalEntity() }
-                    localEntities.forEach { entity ->
-                        localTaskDao.insertTask(entity)
-                    }
-                    Log.d(TAG, "Cached ${tasks.size} tasks locally")
+                val result = onlineTaskRepository.createTask(task)
+                if (result.isSuccess) {
+                    // Cache locally
+                    val entity = task.toLocalEntity().copy(
+                        cacheTimestamp = System.currentTimeMillis()
+                    )
+                    localTaskDao.insertTask(entity)
                 }
-
-                onlineResult
+                result
             } else {
-                // Offline: Return cached tasks
-                Log.d(TAG, "Getting tasks offline for inspector: $inspectorId")
-                val localTasks = localTaskDao.getTasksByInspectorIdSync(inspectorId)
-                val domainTasks = localTasks.map { it.toDomainModel() }
-
-                Log.d(TAG, "Found ${domainTasks.size} cached tasks for inspector: $inspectorId")
-                Result.success(domainTasks)
+                // Store offline for later sync
+                val entity = task.toLocalEntity().copy(
+                    cacheTimestamp = System.currentTimeMillis(),
+                    needsSync = true,
+                    isLocalOnly = true
+                )
+                localTaskDao.insertTask(entity)
+                Log.d(TAG, "Created task offline for later sync: ${task.taskId}")
+                Result.success(Unit)
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Error getting tasks for inspector: $inspectorId", e)
+            Log.e(TAG, "Error creating task", e)
             Result.failure(e)
         }
     }
@@ -124,23 +186,27 @@ class OfflineTaskRepository @Inject constructor(
         return try {
             val isConnected = networkMonitor.isConnected.first()
 
+            // Always update local cache first
+            val localTask = localTaskDao.getTaskById(taskId)
+            if (localTask != null) {
+                val updatedEntity = localTask.copy(
+                    status = status.name,
+                    needsSync = true,
+                    localModifiedAt = System.currentTimeMillis()
+                )
+                localTaskDao.updateTask(updatedEntity)
+            }
+
             if (isConnected) {
-                // Online: Update both online and locally
-                Log.d(TAG, "Updating task status online: $taskId -> $status")
+                // Try to sync immediately
                 val result = onlineTaskRepository.updateTaskStatus(taskId, status)
-
-                if (result.isSuccess) {
-                    // Update local copy as well
-                    localTaskDao.updateTaskStatus(taskId, status.name)
+                if (result.isSuccess && localTask != null) {
+                    // Mark as synced
+                    localTaskDao.markTaskAsSynced(taskId)
                 }
-
                 result
             } else {
-                // Offline: Update locally only
-                Log.d(TAG, "Updating task status offline: $taskId -> $status")
-                localTaskDao.updateTaskStatus(taskId, status.name)
-
-                // TODO: Add to sync queue for later upload
+                Log.d(TAG, "Updated task status offline: $taskId -> $status")
                 Result.success(Unit)
             }
         } catch (e: Exception) {
@@ -154,9 +220,21 @@ class OfflineTaskRepository @Inject constructor(
             val isConnected = networkMonitor.isConnected.first()
 
             if (isConnected) {
-                // Online: Fetch from server
+                // Online: Fetch from server and cache
                 Log.d(TAG, "Fetching tasks online for branch: $branchId")
-                onlineTaskRepository.getTasksByBranch(branchId)
+                val result = onlineTaskRepository.getTasksByBranch(branchId)
+
+                result.getOrNull()?.let { tasks ->
+                    // Cache tasks locally
+                    val entities = tasks.map { task ->
+                        task.toLocalEntity().copy(
+                            cacheTimestamp = System.currentTimeMillis()
+                        )
+                    }
+                    entities.forEach { localTaskDao.insertTask(it) }
+                }
+
+                result
             } else {
                 // Offline: Get from local database
                 Log.d(TAG, "Getting tasks offline for branch: $branchId")
@@ -187,18 +265,47 @@ class OfflineTaskRepository @Inject constructor(
             }
 
             Log.d(TAG, "Syncing tasks for inspector: $inspectorId")
-            val onlineResult = onlineTaskRepository.getTasksByInspectorId(inspectorId)
 
-            onlineResult.getOrNull()?.let { tasks ->
-                // Replace all local tasks for this inspector
-                val localEntities = tasks.map { it.toLocalEntity() }
-                localEntities.forEach { entity ->
-                    localTaskDao.insertTask(entity)
+            // First sync unsynced local tasks
+            val unsyncedTasks = localTaskDao.getUnsyncedTasksByInspector(inspectorId)
+            var syncedCount = 0
+
+            for (localTask in unsyncedTasks) {
+                try {
+                    val domainTask = localTask.toDomainModel()
+
+                    if (localTask.isLocalOnly) {
+                        // Create new task
+                        val result = onlineTaskRepository.createTask(domainTask)
+                        if (result.isSuccess) {
+                            localTaskDao.markTaskAsSynced(localTask.taskId)
+                            syncedCount++
+                        }
+                    } else {
+                        // Update existing task
+                        val result = onlineTaskRepository.updateTaskStatus(
+                            localTask.taskId,
+                            TaskStatus.valueOf(localTask.status)
+                        )
+                        if (result.isSuccess) {
+                            localTaskDao.markTaskAsSynced(localTask.taskId)
+                            syncedCount++
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed to sync task: ${localTask.taskId}", e)
+                    localTaskDao.updateSyncAttempt(localTask.taskId, System.currentTimeMillis())
                 }
+            }
 
-                Log.d(TAG, "Synced ${tasks.size} tasks for inspector: $inspectorId")
-                Result.success(tasks.size)
-            } ?: Result.failure(Exception("Failed to fetch tasks from server"))
+            // Then fetch latest from server
+            val onlineResult = onlineTaskRepository.getTasksByInspectorId(inspectorId)
+            onlineResult.getOrNull()?.let { tasks ->
+                cacheTasksForInspector(inspectorId, tasks)
+            }
+
+            Log.d(TAG, "Synced $syncedCount tasks for inspector: $inspectorId")
+            Result.success(syncedCount)
 
         } catch (e: Exception) {
             Log.e(TAG, "Error syncing tasks", e)
@@ -215,6 +322,25 @@ class OfflineTaskRepository @Inject constructor(
         }
     }
 
+    suspend fun getUnsyncedTasksCount(inspectorId: String): Int {
+        return try {
+            localTaskDao.getUnsyncedTasksCountByInspector(inspectorId)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error getting unsynced tasks count", e)
+            0
+        }
+    }
+
+    suspend fun cleanupExpiredCache() {
+        try {
+            val expiryTime = System.currentTimeMillis() - (CACHE_EXPIRY_HOURS * 60 * 60 * 1000L)
+            localTaskDao.deleteExpiredCache(expiryTime)
+            Log.d(TAG, "Cleaned up expired task cache")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error cleaning up cache", e)
+        }
+    }
+
     suspend fun cleanupOldTasks(olderThanDays: Int = 30) {
         try {
             val cutoffTime = System.currentTimeMillis() - (olderThanDays * 24 * 60 * 60 * 1000L)
@@ -222,6 +348,26 @@ class OfflineTaskRepository @Inject constructor(
             Log.d(TAG, "Cleaned up old tasks older than $olderThanDays days")
         } catch (e: Exception) {
             Log.e(TAG, "Error cleaning up old tasks", e)
+        }
+    }
+
+    // Statistics methods
+    suspend fun getTaskStatistics(inspectorId: String): LocalTaskDao.TaskStatistics? {
+        return try {
+            localTaskDao.getTaskStatistics(inspectorId)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error getting task statistics", e)
+            null
+        }
+    }
+
+    // Maintenance methods
+    suspend fun trimOldSyncedTasks(inspectorId: String, keepCount: Int = 100) {
+        try {
+            localTaskDao.trimOldSyncedTasks(inspectorId, keepCount)
+            Log.d(TAG, "Trimmed old synced tasks for inspector: $inspectorId")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error trimming old tasks", e)
         }
     }
 }

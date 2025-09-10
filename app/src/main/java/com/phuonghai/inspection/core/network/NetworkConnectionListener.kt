@@ -75,9 +75,9 @@ class NetworkConnectionListener : LifecycleService() {
                 }
             }
 
-            // Also sync pending reports
+            // Also sync pending reports - FIXED: Use syncAllPendingReports instead
             Log.d(TAG, "Starting automatic report sync...")
-            val reportSyncResult = reportSyncService.syncPendingReports()
+            val reportSyncResult = reportSyncService.syncAllPendingReports()
 
             when (reportSyncResult) {
                 is com.phuonghai.inspection.core.sync.SyncResult.Success -> {

@@ -72,8 +72,8 @@ class SyncManager @Inject constructor(
                 }
             }
 
-            // Sync reports
-            when (val reportResult = reportSyncService.syncPendingReports()) {
+            // Sync reports - FIXED: Use syncAllPendingReports instead
+            when (val reportResult = reportSyncService.syncAllPendingReports()) {
                 is com.phuonghai.inspection.core.sync.SyncResult.Success -> {
                     reportsSync = reportResult.syncedCount
                     Log.d(TAG, "Reports synced: $reportsSync")
