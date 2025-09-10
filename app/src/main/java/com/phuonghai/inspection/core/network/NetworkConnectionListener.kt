@@ -1,8 +1,14 @@
 package com.phuonghai.inspection.core.network
 
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.os.Build
 import android.util.Log
+import androidx.core.app.NotificationCompat
 import androidx.lifecycle.LifecycleService
 import androidx.lifecycle.lifecycleScope
+import com.phuonghai.inspection.R
 import com.phuonghai.inspection.core.sync.TaskSyncService
 import com.phuonghai.inspection.core.sync.ReportSyncService
 import dagger.hilt.android.AndroidEntryPoint
@@ -23,17 +29,48 @@ class NetworkConnectionListener : LifecycleService() {
 
     companion object {
         private const val TAG = "NetworkConnectionListener"
+        private const val CHANNEL_ID = "network_connection_listener"
+        private const val NOTIFICATION_ID = 1
     }
 
     override fun onCreate() {
         super.onCreate()
         Log.d(TAG, "NetworkConnectionListener service created")
+        createNotificationChannel()
+        startForeground(NOTIFICATION_ID, buildNotification())
         startNetworkMonitoring()
     }
 
     override fun onDestroy() {
         super.onDestroy()
         Log.d(TAG, "NetworkConnectionListener service destroyed")
+    }
+
+    override fun onStartCommand(intent: android.content.Intent?, flags: Int, startId: Int): Int {
+        // Keep service running if the system kills it
+        return START_STICKY
+    }
+
+    private fun createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                CHANNEL_ID,
+                "Network Monitor",
+                NotificationManager.IMPORTANCE_LOW
+            )
+            channel.description = "Network connectivity monitoring"
+            val manager = getSystemService(NotificationManager::class.java)
+            manager.createNotificationChannel(channel)
+        }
+    }
+
+    private fun buildNotification(): Notification {
+        return NotificationCompat.Builder(this, CHANNEL_ID)
+            .setContentTitle("Monitoring network")
+            .setContentText("Synchronizing when online")
+            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setOngoing(true)
+            .build()
     }
 
     private fun startNetworkMonitoring() {
