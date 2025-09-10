@@ -47,7 +47,8 @@ class NetworkConnectionListener : LifecycleService() {
     }
 
     override fun onStartCommand(intent: android.content.Intent?, flags: Int, startId: Int): Int {
-        // Keep service running if the system kills it
+        super.onStartCommand(intent, flags, startId)
+        // Giữ service chạy tiếp khi bị hệ thống kill
         return START_STICKY
     }
 
@@ -80,7 +81,7 @@ class NetworkConnectionListener : LifecycleService() {
             var previousState: Boolean? = null
 
             networkMonitor.isConnected.collect { isConnected ->
-                // Only act on state changes
+                // Chỉ xử lý khi trạng thái thay đổi
                 if (previousState != null && previousState != isConnected) {
                     if (isConnected) {
                         Log.d(TAG, "Network connected - starting auto sync")
@@ -99,10 +100,9 @@ class NetworkConnectionListener : LifecycleService() {
         try {
             Log.d(TAG, "Network is available - performing auto sync")
 
-            // Auto sync tasks when network is available
+            // Sync task
             Log.d(TAG, "Starting automatic task sync...")
             val taskSyncResult = taskSyncService.autoSyncTasks()
-
             when (taskSyncResult) {
                 is com.phuonghai.inspection.core.sync.TaskSyncResult.Success -> {
                     Log.d(TAG, "Task sync completed: ${taskSyncResult.taskCount} tasks synced")
@@ -112,10 +112,9 @@ class NetworkConnectionListener : LifecycleService() {
                 }
             }
 
-            // Also sync pending reports - FIXED: Use syncAllPendingReports instead
+            // Sync report
             Log.d(TAG, "Starting automatic report sync...")
             val reportSyncResult = reportSyncService.syncAllPendingReports()
-
             when (reportSyncResult) {
                 is com.phuonghai.inspection.core.sync.SyncResult.Success -> {
                     Log.d(TAG, "Report sync completed: ${reportSyncResult.syncedCount} reports synced")
@@ -132,7 +131,6 @@ class NetworkConnectionListener : LifecycleService() {
 
     private fun onNetworkDisconnected() {
         Log.d(TAG, "Network disconnected - switching to offline mode")
-        // You can add any offline-specific logic here if needed
-        // For example, showing notifications, updating UI state, etc.
+        // Logic offline thêm ở đây nếu cần
     }
 }
