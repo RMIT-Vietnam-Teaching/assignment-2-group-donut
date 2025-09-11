@@ -3,9 +3,12 @@ package com.phuonghai.inspection.presentation.supervisor.task
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.phuonghai.inspection.domain.model.Branch
+import com.phuonghai.inspection.domain.model.Notification
+import com.phuonghai.inspection.domain.model.NotificationType
 import com.phuonghai.inspection.domain.model.Task
 import com.phuonghai.inspection.domain.model.User
 import com.phuonghai.inspection.domain.usecase.AssignTaskUseCase
+import com.phuonghai.inspection.domain.usecase.CreateNotificationUseCase
 import com.phuonghai.inspection.domain.usecase.GetBranchesUseCase
 import com.phuonghai.inspection.domain.usecase.GetInspectorsUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -18,7 +21,8 @@ import javax.inject.Inject
 class SupervisorTaskViewModel @Inject constructor(
     private val assignTaskUseCase: AssignTaskUseCase,
     private val getBranchesUseCase: GetBranchesUseCase,
-    private val getInspectorsUseCase: GetInspectorsUseCase
+    private val getInspectorsUseCase: GetInspectorsUseCase,
+    private val createNotificationUseCase: CreateNotificationUseCase
 ) : ViewModel() {
 
     private val _branches = MutableStateFlow<List<Branch>>(emptyList())
@@ -56,6 +60,17 @@ class SupervisorTaskViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 assignTaskUseCase(task)
+                // Create notification for inspector
+                val notification = Notification(
+                    id = task.taskId, // or UUID.randomUUID().toString()
+                    title = "New Task Assigned",
+                    message = "You have been assigned a new task: ${task.title}",
+                    date = task.createdAt,
+                    senderId = task.supervisorId,
+                    receiverId = task.inspectorId,
+                    type = NotificationType.TASK_ASSIGNED
+                )
+                createNotificationUseCase(notification)
                 _success.value = true
             } catch (e: Exception) {
                 _error.value = e.message

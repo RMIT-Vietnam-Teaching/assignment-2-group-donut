@@ -20,26 +20,19 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.phuonghai.inspection.presentation.home.inspector.notification.NotificationViewModel
+import com.google.firebase.Timestamp
+import com.phuonghai.inspection.domain.model.Notification
+import com.phuonghai.inspection.domain.model.NotificationType
+import com.phuonghai.inspection.presentation.home.inspector.notification.InspectorNotificationViewModel
+import com.phuonghai.inspection.presentation.theme.SafetyYellow
+import java.text.SimpleDateFormat
+import java.util.Locale
 
-data class NotificationItem(
-    val id: String,
-    val date: String,
-    val title: String,
-    val location: String,
-    val preview: String,
-    val isUnread: Boolean = false,
-    val type: NotificationType = NotificationType.GENERAL
-)
-
-enum class NotificationType {
-    GENERAL, URGENT, SUCCESS, WARNING
-}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun InspectorNotificationScreen(
-    viewModel: NotificationViewModel = hiltViewModel()
+    viewModel: InspectorNotificationViewModel = hiltViewModel()
 ) {
     val safetyYellow = Color(0xFFFFD700)
     val darkCharcoal = Color(0xFF2C2C2C)
@@ -50,50 +43,11 @@ fun InspectorNotificationScreen(
         viewModel.loadNotifications()
     }
 
-    // Sample notifications for testing
-    val sampleNotifications = listOf(
-        NotificationItem(
-            id = "1",
-            date = "1 Sept 2025",
-            title = "Weekly Site Inspection Report",
-            location = "Factory A | Line 3",
-            preview = "Inspection completed. No major issues found, only ...",
-            type = NotificationType.SUCCESS
-        ),
-        NotificationItem(
-            id = "2",
-            date = "31 Aug 2025",
-            title = "Follow-up Required: Safety Violation",
-            location = "Warehouse B",
-            preview = "Critical issue detected in fire exit compliance. ...",
-            isUnread = true,
-            type = NotificationType.URGENT
-        ),
-        NotificationItem(
-            id = "3",
-            date = "28 Aug 2025",
-            title = "Equipment Maintenance Checklist",
-            location = "Construction Site C",
-            preview = "Reminder: Complete machinery checks before next ...",
-            type = NotificationType.WARNING
-        ),
-        NotificationItem(
-            id = "4",
-            date = "27 Aug 2025",
-            title = "Inspection Feedback Submitted",
-            location = "Retail Store D",
-            preview = "Inspector feedback uploaded. Please review and a...",
-            type = NotificationType.GENERAL
-        ),
-        NotificationItem(
-            id = "5",
-            date = "1 Sept 2025",
-            title = "Weekly Site Inspection Report",
-            location = "Factory A | Line 3",
-            preview = "Inspection completed. No major issues found, only ...",
-            type = NotificationType.SUCCESS
-        ),
-    )
+    fun formatDate(timestamp: Timestamp?): String {
+        if (timestamp == null) return ""
+        val sdf = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
+        return sdf.format(timestamp.toDate())
+    }
 
     Scaffold(
         modifier = Modifier
@@ -104,16 +58,7 @@ fun InspectorNotificationScreen(
                 title = { Text("Notifications", color = Color.White) },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = darkCharcoal
-                ),
-                actions = {
-                    IconButton(onClick = { viewModel.markAllAsRead() }) {
-                        Icon(
-                            Icons.Default.DoneAll,
-                            contentDescription = "Mark all read",
-                            tint = Color.White
-                        )
-                    }
-                }
+                )
             )
         },
         containerColor = Color.Black
@@ -134,7 +79,10 @@ fun InspectorNotificationScreen(
                     .padding(bottom = 100.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                sampleNotifications.groupBy { it.date }.forEach { (date, items) ->
+                uiState.notifications
+                    .sortedByDescending { it.date }
+                    .groupBy { formatDate(it.date) }
+                    .forEach { (date, items) ->
                     item {
                         Text(
                             text = date,
@@ -148,7 +96,7 @@ fun InspectorNotificationScreen(
                     items(items) { notification ->
                         NotificationCard(
                             notification = notification,
-                            onClick = { viewModel.markAsRead(notification.id) }
+                            onClick = { }
                         )
                     }
                 }
@@ -159,24 +107,21 @@ fun InspectorNotificationScreen(
 
 @Composable
 fun NotificationCard(
-    notification: NotificationItem,
+    notification: Notification,
     onClick: () -> Unit
 ) {
-    val safetyYellow = Color(0xFFFFD700)
 
     val iconColor = when (notification.type) {
-        NotificationType.SUCCESS -> Color(0xFF4CAF50)
-        NotificationType.URGENT -> Color(0xFFE53935)
-        NotificationType.WARNING -> Color(0xFFFFC107)
-        NotificationType.GENERAL -> safetyYellow
+        NotificationType.TASK_ASSIGNED -> Color(0xFF4CAF50)
+        NotificationType.REPORT_ACCEPTED -> Color(0xFFE53935)
+        NotificationType.REPORT_REJECTED -> Color(0xFFFFC107)
     }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (notification.isUnread)
-                Color(0xFF2A2A2A) else Color(0xFF1E1E1E)
+            containerColor = Color(0xFF2A2A2A)
         ),
         elevation = CardDefaults.cardElevation(6.dp),
         onClick = onClick
@@ -189,10 +134,9 @@ fun NotificationCard(
         ) {
             Icon(
                 imageVector = when (notification.type) {
-                    NotificationType.SUCCESS -> Icons.Default.CheckCircle
-                    NotificationType.URGENT -> Icons.Default.Warning
-                    NotificationType.WARNING -> Icons.Default.Info
-                    NotificationType.GENERAL -> Icons.Default.Campaign
+                    NotificationType.REPORT_REJECTED -> Icons.Default.Warning
+                    NotificationType.REPORT_ACCEPTED -> Icons.Default.Done
+                    NotificationType.TASK_ASSIGNED -> Icons.Default.Assignment
                 },
                 contentDescription = null,
                 tint = iconColor,
@@ -212,28 +156,18 @@ fun NotificationCard(
                 )
 
                 Text(
-                    notification.location,
+                    notification.message,
                     fontSize = 14.sp,
-                    color = safetyYellow,
+                    color = SafetyYellow,
                     fontWeight = FontWeight.Medium
                 )
 
                 Text(
-                    notification.preview,
+                    notification.type.name,
                     fontSize = 14.sp,
                     color = Color.LightGray,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
-                )
-            }
-
-            if (notification.isUnread) {
-                Spacer(modifier = Modifier.width(8.dp))
-                Box(
-                    modifier = Modifier
-                        .size(10.dp)
-                        .clip(CircleShape)
-                        .background(safetyYellow)
                 )
             }
         }

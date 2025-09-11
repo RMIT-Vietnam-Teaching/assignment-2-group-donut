@@ -3,11 +3,15 @@ package com.phuonghai.inspection.presentation.supervisor.dashboard
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
+import com.phuonghai.inspection.domain.model.Notification
+import com.phuonghai.inspection.domain.model.NotificationType
 import com.phuonghai.inspection.domain.model.Report
 import com.phuonghai.inspection.domain.model.ResponseStatus
 import com.phuonghai.inspection.domain.model.TaskStatus
 import com.phuonghai.inspection.domain.model.User
+import com.phuonghai.inspection.domain.usecase.CreateNotificationUseCase
 import com.phuonghai.inspection.domain.usecase.GetReportsBySupervisorUseCase
 import com.phuonghai.inspection.domain.usecase.GetTaskIdByReportIdUseCase
 import com.phuonghai.inspection.domain.usecase.GetUserInformationUseCase
@@ -27,7 +31,8 @@ class SupervisorDashboardViewModel @Inject constructor(
     private val getUserInformationUseCase: GetUserInformationUseCase,
     private val updateResponseStatusReportUseCase: UpdateResponseStatusReportUseCase,
     private val getTaskIdByReportIdUseCase: GetTaskIdByReportIdUseCase,
-    private val updateTaskStatusUseCase: UpdateTaskStatusUseCase
+    private val updateTaskStatusUseCase: UpdateTaskStatusUseCase,
+    private val createNotificationUseCase: CreateNotificationUseCase
 ) : ViewModel() {
     private val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
 
@@ -96,21 +101,53 @@ class SupervisorDashboardViewModel @Inject constructor(
                 val result2 = updateTaskStatusUseCase(taskId, TaskStatus.COMPLETED)
                 result2.getOrThrow()
 
+                // 4. Create notification
+                val inspectorId = _reports.value.find { it.reportId == reportId }?.inspectorId ?: ""
+                if (inspectorId.isNotBlank()) {
+                    val notification = Notification(
+                        id = reportId, // or UUID
+                        title = "Report Approved",
+                        message = "Your report has been approved 🎉",
+                        date = Timestamp.now(),
+                        senderId = currentUserId,
+                        receiverId = inspectorId,
+                        type = NotificationType.REPORT_ACCEPTED
+                    )
+                    createNotificationUseCase(notification)
+                }
+
                 // 4. Reload data if everything succeeded
                 loadReports()
                 _isLoading.value = false
             } catch (e: Exception) {
                 Log.e("SupervisorDashboardViewModel", "Error approving report", e)
+                _isLoading.value = false
             }
         }
     }
     fun rejectReport(reportId: String) {
         viewModelScope.launch {
-            val result = updateResponseStatusReportUseCase(reportId, ResponseStatus.REJECTED.name)
+            try {
+                updateResponseStatusReportUseCase(reportId, ResponseStatus.REJECTED.name).getOrThrow()
 
-            result.onSuccess {
+                // Notify inspector
+                val inspectorId = _reports.value.find { it.reportId == reportId }?.inspectorId ?: ""
+                if (inspectorId.isNotBlank()) {
+                    val notification = Notification(
+                        id = reportId,
+                        title = "Report Rejected",
+                        message = "Your report has been rejected. Please review and resubmit.",
+                        date = Timestamp.now(),
+                        senderId = currentUserId,
+                        receiverId = inspectorId,
+                        type = NotificationType.REPORT_REJECTED
+                    )
+                    createNotificationUseCase(notification)
+                }
+
+                // Refresh reports
                 loadReports()
-            }.onFailure { e ->
+            } catch (e: Exception) {
                 Log.e("SupervisorDashboardViewModel", "Error rejecting report", e)
             }
         }
