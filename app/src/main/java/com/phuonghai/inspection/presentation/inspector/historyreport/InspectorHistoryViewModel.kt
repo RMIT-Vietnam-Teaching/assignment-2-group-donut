@@ -7,7 +7,7 @@ import com.phuonghai.inspection.core.network.NetworkMonitor
 import com.phuonghai.inspection.data.local.dao.LocalReportDao
 import com.phuonghai.inspection.data.local.entity.toDomainModel
 import com.phuonghai.inspection.domain.model.Report
-import com.phuonghai.inspection.domain.repository.IReportRepository
+import com.phuonghai.inspection.domain.usecase.GetFirebaseReportsByInspectorUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -16,7 +16,7 @@ import android.util.Log
 
 @HiltViewModel
 class InspectorHistoryViewModel @Inject constructor(
-    private val reportRepository: IReportRepository,
+    private val getFirebaseReportsByInspectorUseCase: GetFirebaseReportsByInspectorUseCase,
     private val localReportDao: LocalReportDao,
     private val networkMonitor: NetworkMonitor
 ) : ViewModel() {
@@ -121,7 +121,7 @@ class InspectorHistoryViewModel @Inject constructor(
             Log.d(TAG, "Syncing with Firebase")
 
             // Sử dụng flow để observe Firebase data
-            reportRepository.getReportsByInspectorId(currentUserId).collect { firebaseReports ->
+            getFirebaseReportsByInspectorUseCase(currentUserId).collect { firebaseReports ->
                 Log.d(TAG, "Received ${firebaseReports.size} reports from Firebase")
 
                 // Merge Firebase data với local data

@@ -9,6 +9,7 @@ import com.google.firebase.firestore.Query
 import com.google.firebase.storage.storage
 import com.phuonghai.inspection.domain.model.AssignStatus
 import com.phuonghai.inspection.domain.model.Report
+import com.phuonghai.inspection.domain.model.ResponseStatus
 import com.phuonghai.inspection.domain.model.SyncStatus
 import com.phuonghai.inspection.domain.repository.IReportRepository
 import kotlinx.coroutines.flow.Flow
@@ -186,6 +187,38 @@ class ReportRepositoryImpl @Inject constructor(
             Result.success(reports)
         } catch (e: Exception) {
             Log.e(TAG, "Error getting reports for supervisor: $supervisorId", e)
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun getPendingReportsBySupervisorId(supervisorId: String): Result<List<Report>> {
+        return try {
+            val tasksSnapshot = firestore.collection("tasks")
+                .whereEqualTo("supervisorId", supervisorId)
+                .get()
+                .await()
+
+            val taskIds = tasksSnapshot.documents.mapNotNull { it.getString("taskId") }
+            if (taskIds.isEmpty()) {
+                return Result.success(emptyList())
+            }
+
+            val reports = mutableListOf<Report>()
+            for (taskId in taskIds) {
+                val reportsSnapshot = firestore.collection(REPORTS_COLLECTION)
+                    .whereEqualTo("taskId", taskId)
+                    .whereEqualTo("responseStatus", ResponseStatus.PENDING.name)
+                    .get()
+                    .await()
+
+                val reportsForTask = reportsSnapshot.toObjects(Report::class.java)
+                    .filter { it.assignStatus.name != "DRAFT" }
+                reports.addAll(reportsForTask)
+            }
+            Log.d(TAG, "Retrieved ${reports.size} pending reports for supervisor: $supervisorId")
+            Result.success(reports)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error getting pending reports for supervisor: $supervisorId", e)
             Result.failure(e)
         }
     }

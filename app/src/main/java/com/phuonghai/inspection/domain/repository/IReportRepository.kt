@@ -14,6 +14,7 @@ interface IReportRepository {
     suspend fun getDraftReportsByInspectorId(inspectorId: String): Result<List<Report>>
     suspend fun deleteDraftReport(reportId: String): Result<Unit>
     suspend fun getReportsBySupervisorId(supervisorId: String): Result<List<Report>>
+    suspend fun getPendingReportsBySupervisorId(supervisorId: String): Result<List<Report>>
     suspend fun updateStatus(reportId: String, status: String): Result<Unit>
     fun getReportsByInspectorId(inspectorId: String): Flow<List<Report>>
 }

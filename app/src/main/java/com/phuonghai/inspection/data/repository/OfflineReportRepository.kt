@@ -344,6 +344,10 @@ class OfflineReportRepository @Inject constructor(
         return onlineReportRepository.getReportsBySupervisorId(supervisorId)
     }
 
+    override suspend fun getPendingReportsBySupervisorId(supervisorId: String): Result<List<Report>> {
+        return onlineReportRepository.getPendingReportsBySupervisorId(supervisorId)
+    }
+
     override suspend fun updateStatus(reportId: String, status: String): Result<Unit> {
         return onlineReportRepository.updateStatus(reportId, status)
     }
