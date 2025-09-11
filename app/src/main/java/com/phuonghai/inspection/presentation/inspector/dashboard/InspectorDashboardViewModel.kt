@@ -3,108 +3,214 @@ package com.phuonghai.inspection.presentation.home.inspector
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.firebase.Timestamp
+import com.google.firebase.auth.FirebaseAuth
+import com.phuonghai.inspection.domain.model.Report
+import com.phuonghai.inspection.domain.model.ResponseStatus
+import com.phuonghai.inspection.domain.model.Task
+import com.phuonghai.inspection.domain.model.TaskStatus
 import com.phuonghai.inspection.domain.model.User
-import com.phuonghai.inspection.domain.repository.IAuthRepository
+import com.phuonghai.inspection.domain.usecase.GetInspectorTasksUseCase
+import com.phuonghai.inspection.domain.usecase.GetUserInformationUseCase
+import com.phuonghai.inspection.domain.usecase.GetReportsByInspectorUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.*
 import javax.inject.Inject
 
 @HiltViewModel
 class InspectorDashboardViewModel @Inject constructor(
-    private val authRepository: IAuthRepository
+    private val getUserInformationUseCase: GetUserInformationUseCase,
+    private val getInspectorTasksUseCase: GetInspectorTasksUseCase,
+    private val getReportsByInspectorUseCase: GetReportsByInspectorUseCase
 ) : ViewModel() {
 
-    companion object {
-        private const val TAG = "InspectorDashboardVM"
-    }
+    private val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
 
     private val _uiState = MutableStateFlow(InspectorDashboardUiState())
     val uiState: StateFlow<InspectorDashboardUiState> = _uiState.asStateFlow()
 
-    init {
-        loadDashboardData()
+    companion object {
+        private const val TAG = "InspectorDashboardViewModel"
     }
 
-    private fun loadDashboardData() {
-        Log.d(TAG, "Loading dashboard data")
+    fun loadDashboardData() {
+        Log.d(TAG, "Loading dashboard data for user: $currentUserId")
+
+        if (currentUserId.isEmpty()) {
+            Log.e(TAG, "User not authenticated")
+            _uiState.value = _uiState.value.copy(
+                isLoading = false,
+                errorMessage = "Người dùng chưa được xác thực"
+            )
+            return
+        }
 
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true)
+            _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
 
             try {
-                // Get current user info
-                val currentUser = authRepository.getCurrentUser()
-                Log.d(TAG, "Current user: $currentUser")
+                // Load user information first
+                loadUserInformation()
 
-                if (currentUser != null) {
-                    // Load dashboard statistics
-                    loadStatistics(currentUser)
+                // Load reports and tasks data (these use Flow so they will update automatically)
+                loadReportsData()
+                loadTodayTasks()
 
-                    // Load recent reports (mock data for now)
-                    loadRecentReports()
+                Log.d(TAG, "Dashboard data loading initiated successfully")
+                _uiState.value = _uiState.value.copy(isLoading = false)
 
-                    _uiState.value = _uiState.value.copy(
-                        isLoading = false,
-                        currentUser = currentUser,
-                        errorMessage = null
-                    )
-                } else {
-                    _uiState.value = _uiState.value.copy(
-                        isLoading = false,
-                        errorMessage = "Không thể tải thông tin người dùng"
-                    )
-                }
             } catch (e: Exception) {
-                Log.e(TAG, "Error loading dashboard", e)
+                Log.e(TAG, "Error loading dashboard data", e)
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    errorMessage = "Lỗi tải dashboard: ${e.message}"
+                    errorMessage = "Lỗi tải dữ liệu: ${e.message}"
                 )
             }
         }
     }
 
-    private fun loadStatistics(user: User) {
-        // Mock data - replace with actual repository calls
-        val stats = DashboardStatistics(
-            approvedReports = 12,
-            pendingReports = 3,
-            draftReports = 5,
-            rejectedReports = 1
-        )
-
-        _uiState.value = _uiState.value.copy(statistics = stats)
-        Log.d(TAG, "Loaded statistics: $stats")
+    private suspend fun loadUserInformation() {
+        try {
+            val result = getUserInformationUseCase(currentUserId)
+            result.fold(
+                onSuccess = { user ->
+                    if (user != null) {
+                        _uiState.value = _uiState.value.copy(currentUser = user)
+                        Log.d(TAG, "User information loaded: ${user.fullName}")
+                    } else {
+                        Log.w(TAG, "User information not found")
+                    }
+                },
+                onFailure = { exception ->
+                    Log.e(TAG, "Error loading user information", exception)
+                }
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "Exception loading user information", e)
+        }
     }
 
-    private fun loadRecentReports() {
-        // Mock data - replace with actual repository calls
-        val recentReports = listOf(
-            ReportItem(
-                id = "1",
-                title = "Kiểm tra an toàn công trình A",
-                status = "SUBMITTED",
-                createdAt = "2 giờ trước"
-            ),
-            ReportItem(
-                id = "2",
-                title = "Báo cáo tình trạng máy móc",
-                status = "APPROVED",
-                createdAt = "1 ngày trước"
-            ),
-            ReportItem(
-                id = "3",
-                title = "Kiểm tra môi trường làm việc",
-                status = "DRAFT",
-                createdAt = "2 ngày trước"
-            )
-        )
+    private suspend fun loadReportsData() {
+        try {
+            // Use Flow to get reports by inspector ID - this will automatically update when data changes
+            viewModelScope.launch {
+                getReportsByInspectorUseCase(currentUserId).collect { reports ->
+                    Log.d(TAG, "Received ${reports.size} reports from Firebase for user: $currentUserId")
 
-        _uiState.value = _uiState.value.copy(recentReports = recentReports)
-        Log.d(TAG, "Loaded ${recentReports.size} recent reports")
+                    // Filter pending reports
+                    val pendingReports = reports.filter { report ->
+                        report.responseStatus == ResponseStatus.PENDING
+                    }.map { report ->
+                        ReportItem(
+                            id = report.reportId,
+                            title = report.title.ifEmpty { "Báo cáo không có tiêu đề" },
+                            status = report.responseStatus.name,
+                            createdAt = formatTimestamp(report.createdAt)
+                        )
+                    }
+
+                    // Calculate statistics
+                    val approvedReports = reports.count { it.responseStatus == ResponseStatus.APPROVED }
+                    val pendingReportsCount = reports.count { it.responseStatus == ResponseStatus.PENDING }
+                    val rejectedReports = reports.count { it.responseStatus == ResponseStatus.REJECTED }
+                    val draftReports = reports.count { it.assignStatus.name == "DRAFT" }
+
+                    val statistics = DashboardStatistics(
+                        approvedReports = approvedReports,
+                        pendingReports = pendingReportsCount,
+                        draftReports = draftReports,
+                        rejectedReports = rejectedReports
+                    )
+
+                    _uiState.value = _uiState.value.copy(
+                        pendingReports = pendingReports,
+                        statistics = statistics
+                    )
+
+                    Log.d(TAG, "Loaded ${pendingReports.size} pending reports from Firebase")
+                    Log.d(TAG, "Statistics loaded: Approved=$approvedReports, Pending=$pendingReportsCount, Draft=$draftReports, Rejected=$rejectedReports")
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Exception loading reports data from Firebase", e)
+        }
+    }
+
+    private suspend fun loadTodayTasks() {
+        try {
+            val result = getInspectorTasksUseCase(currentUserId)
+            result.fold(
+                onSuccess = { tasks ->
+                    val today = Calendar.getInstance()
+                    val todayStart = Calendar.getInstance().apply {
+                        set(Calendar.HOUR_OF_DAY, 0)
+                        set(Calendar.MINUTE, 0)
+                        set(Calendar.SECOND, 0)
+                        set(Calendar.MILLISECOND, 0)
+                    }
+                    val todayEnd = Calendar.getInstance().apply {
+                        set(Calendar.HOUR_OF_DAY, 23)
+                        set(Calendar.MINUTE, 59)
+                        set(Calendar.SECOND, 59)
+                        set(Calendar.MILLISECOND, 999)
+                    }
+
+                    val todayTasks = tasks.filter { task ->
+                        task.dueDate?.let { dueDate ->
+                            val taskDate = dueDate.toDate().time
+                            taskDate >= todayStart.timeInMillis && taskDate <= todayEnd.timeInMillis
+                        } ?: false
+                    }.filter { task ->
+                        // Only show assigned or in-progress tasks
+                        task.status == TaskStatus.ASSIGNED || task.status == TaskStatus.IN_PROGRESS
+                    }.map { task ->
+                        TaskItem(
+                            taskId = task.taskId,
+                            title = task.title.ifEmpty { "Nhiệm vụ không có tiêu đề" },
+                            description = task.description.ifEmpty { "Không có mô tả" },
+                            priority = task.priority.name,
+                            status = task.status.name,
+                            dueTime = formatTaskDueTime(task.dueDate)
+                        )
+                    }
+
+                    _uiState.value = _uiState.value.copy(todayTasks = todayTasks)
+                    Log.d(TAG, "Loaded ${todayTasks.size} today tasks")
+                },
+                onFailure = { exception ->
+                    Log.e(TAG, "Error loading today tasks", exception)
+                }
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "Exception loading today tasks", e)
+        }
+    }
+
+    private fun formatTimestamp(timestamp: Timestamp?): String {
+        if (timestamp == null) return "Không rõ thời gian"
+
+        val now = System.currentTimeMillis()
+        val reportTime = timestamp.toDate().time
+        val diffInMillis = now - reportTime
+
+        return when {
+            diffInMillis < 60 * 1000 -> "Vừa xong"
+            diffInMillis < 60 * 60 * 1000 -> "${diffInMillis / (60 * 1000)} phút trước"
+            diffInMillis < 24 * 60 * 60 * 1000 -> "${diffInMillis / (60 * 60 * 1000)} giờ trước"
+            diffInMillis < 7 * 24 * 60 * 60 * 1000 -> "${diffInMillis / (24 * 60 * 60 * 1000)} ngày trước"
+            else -> SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(timestamp.toDate())
+        }
+    }
+
+    private fun formatTaskDueTime(timestamp: Timestamp?): String {
+        if (timestamp == null) return "Không có hạn"
+
+        return SimpleDateFormat("HH:mm", Locale.getDefault()).format(timestamp.toDate())
     }
 
     fun refreshDashboard() {
@@ -135,13 +241,22 @@ class InspectorDashboardViewModel @Inject constructor(
         val stats = _uiState.value.statistics
         return (stats?.draftReports ?: 0) > 0 || (stats?.rejectedReports ?: 0) > 0
     }
+
+    fun hasTasksToday(): Boolean {
+        return _uiState.value.todayTasks.isNotEmpty()
+    }
+
+    fun hasPendingReports(): Boolean {
+        return _uiState.value.pendingReports.isNotEmpty()
+    }
 }
 
 data class InspectorDashboardUiState(
     val isLoading: Boolean = false,
     val currentUser: User? = null,
     val statistics: DashboardStatistics? = null,
-    val recentReports: List<ReportItem> = emptyList(),
+    val pendingReports: List<ReportItem> = emptyList(),
+    val todayTasks: List<TaskItem> = emptyList(),
     val errorMessage: String? = null
 ) {
     val showContent: Boolean get() = !isLoading && currentUser != null
@@ -149,33 +264,28 @@ data class InspectorDashboardUiState(
     val isEmpty: Boolean get() = statistics?.let { it.getTotalCount() == 0 } ?: true
 }
 
-data class DashboardStatistics(
-    val approvedReports: Int = 0,
-    val pendingReports: Int = 0,
-    val draftReports: Int = 0,
-    val rejectedReports: Int = 0
-) {
-    fun getTotalCount(): Int = approvedReports + pendingReports + draftReports + rejectedReports
-
-    fun getStatusSummary(): String {
-        return when {
-            pendingReports > 0 && draftReports > 0 ->
-                "Bạn có $pendingReports báo cáo đang chờ duyệt và $draftReports bản nháp"
-            pendingReports > 0 ->
-                "Bạn có $pendingReports báo cáo đang chờ duyệt"
-            draftReports > 0 ->
-                "Bạn có $draftReports bản nháp cần hoàn thiện"
-            getTotalCount() == 0 ->
-                "Chưa có báo cáo nào. Hãy tạo báo cáo đầu tiên!"
-            else ->
-                "Tất cả báo cáo đã được xử lý"
-        }
-    }
-}
-
+// Data classes for the new dashboard items
 data class ReportItem(
     val id: String,
     val title: String,
     val status: String,
     val createdAt: String
 )
+
+data class TaskItem(
+    val taskId: String,
+    val title: String,
+    val description: String,
+    val priority: String,
+    val status: String,
+    val dueTime: String
+)
+
+data class DashboardStatistics(
+    val approvedReports: Int,
+    val pendingReports: Int,
+    val draftReports: Int,
+    val rejectedReports: Int
+) {
+    fun getTotalCount(): Int = approvedReports + pendingReports + draftReports + rejectedReports
+}

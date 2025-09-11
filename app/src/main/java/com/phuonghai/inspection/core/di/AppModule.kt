@@ -30,8 +30,11 @@ import com.phuonghai.inspection.domain.repository.IChatMessageRepository
 import com.phuonghai.inspection.domain.repository.IReportRepository
 import com.phuonghai.inspection.domain.repository.ITaskRepository
 import com.phuonghai.inspection.domain.repository.IUserRepository
+import com.phuonghai.inspection.domain.usecase.GetFirebaseReportsByInspectorUseCase
 import com.phuonghai.inspection.domain.usecase.auth.SignOutUseCase
 import com.phuonghai.inspection.domain.usecase.GetInspectorTasksUseCase
+import com.phuonghai.inspection.domain.usecase.GetReportsByInspectorUseCase
+import com.phuonghai.inspection.domain.usecase.GetTodayTasksUseCase
 import com.phuonghai.inspection.domain.usecase.UpdateTaskStatusUseCase
 import com.phuonghai.inspection.presentation.inspector.historyreport.InspectorHistoryViewModel
 import dagger.Binds
@@ -262,5 +265,27 @@ object AppModule {
             localReportDao,
             networkMonitor
         )
+    }
+    @Provides
+    @Singleton
+    fun provideGetTodayTasksUseCase(
+        taskRepository: ITaskRepository
+    ): GetTodayTasksUseCase {
+        return GetTodayTasksUseCase(taskRepository)
+    }
+
+    @Provides
+    @Singleton
+    fun provideGetReportsByInspectorUseCase(
+        reportRepository: IReportRepository
+    ): GetReportsByInspectorUseCase {
+        return GetReportsByInspectorUseCase(reportRepository)
+    }
+    @Provides
+    @Singleton
+    fun provideGetFirebaseReportsByInspectorUseCase(
+        firebaseReportRepository: ReportRepositoryImpl
+    ): GetFirebaseReportsByInspectorUseCase {
+        return GetFirebaseReportsByInspectorUseCase(firebaseReportRepository)
     }
 }

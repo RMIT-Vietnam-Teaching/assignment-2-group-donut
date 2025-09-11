@@ -1,8 +1,10 @@
 package com.phuonghai.inspection.presentation.home.inspector
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -12,8 +14,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -22,8 +26,17 @@ import androidx.navigation.NavController
 import com.phuonghai.inspection.domain.model.User
 import com.phuonghai.inspection.presentation.generalUI.ButtonUI
 import com.phuonghai.inspection.presentation.navigation.Screen
-import com.phuonghai.inspection.presentation.home.inspector.InspectorDashboardViewModel
 import com.phuonghai.inspection.presentation.theme.*
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+
+// Theme colors - add these if not already defined in your theme files
+val StatusOrange = Color(0xFFFF9800)
+val StatusBlue = Color(0xFF2196F3)
+val StatusGreen = Color(0xFF4CAF50)
+val StatusGray = Color(0xFF9E9E9E)
+val SafetyRed = Color(0xFFF44336)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -33,20 +46,9 @@ fun InspectorDashboardScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
-    // Sample data for UI testing - replace with real data from ViewModel
-    val sampleReports = listOf(
-        ReportItem("1", "Fire Safety Report", "PENDING_REVIEW", "2 giờ trước"),
-        ReportItem("2", "Elevator Inspection", "NEEDS_ATTENTION", "5 giờ trước"),
-        ReportItem("3", "Chemical Storage", "APPROVED", "1 ngày trước"),
-        ReportItem("4", "Equipment Check", "DRAFT", "2 ngày trước")
-    )
-
-    val sampleStats = DashboardStatistics(
-        approvedReports = 5,
-        pendingReports = 3,
-        draftReports = 4,
-        rejectedReports = 1
-    )
+    LaunchedEffect(Unit) {
+        viewModel.loadDashboardData()
+    }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -96,20 +98,116 @@ fun InspectorDashboardScreen(
 
                 uiState.showError -> {
                     DashboardErrorContent(
-                        message = uiState.errorMessage ?: "Có lỗi xảy ra",
-                        onRetry = { viewModel.refreshDashboard() },
-                        onDismiss = { viewModel.clearError() }
+                        message = uiState.errorMessage ?: "Đã có lỗi xảy ra",
+                        onRetry = { viewModel.refreshDashboard() }
                     )
+                }
+
+                uiState.showContent -> {
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        // Welcome Header
+                        item {
+                            WelcomeHeader(user = uiState.currentUser)
+                        }
+
+                        // Statistics Overview
+                        item {
+                            StatisticsOverview(
+                                pendingReports = uiState.pendingReports.size,
+                                todayTasks = uiState.todayTasks.size,
+                                totalReports = uiState.statistics?.getTotalCount() ?: 0,
+                                completedTasks = uiState.statistics?.approvedReports ?: 0
+                            )
+                        }
+
+                        // Pending Reports Section
+                        item {
+                            SectionHeader(
+                                title = "Báo cáo chờ duyệt",
+                                count = uiState.pendingReports.size,
+                                icon = Icons.Default.PendingActions,
+                                color = StatusOrange
+                            )
+                        }
+
+                        if (uiState.pendingReports.isEmpty()) {
+                            item {
+                                EmptyStateCard(
+                                    message = "Không có báo cáo nào đang chờ duyệt",
+                                    icon = Icons.Default.CheckCircle
+                                )
+                            }
+                        } else {
+                            items(uiState.pendingReports) { report ->
+                                PendingReportCard(
+                                    report = report,
+                                    onClick = {
+                                        // Navigate to report detail
+                                        navController.navigate("report_detail/${report.id}")
+                                    }
+                                )
+                            }
+                        }
+
+                        // Today Tasks Section
+                        item {
+                            SectionHeader(
+                                title = "Nhiệm vụ hôm nay",
+                                count = uiState.todayTasks.size,
+                                icon = Icons.Default.Today,
+                                color = StatusBlue
+                            )
+                        }
+
+                        if (uiState.todayTasks.isEmpty()) {
+                            item {
+                                EmptyStateCard(
+                                    message = "Không có nhiệm vụ nào cho hôm nay",
+                                    icon = Icons.Default.EventAvailable
+                                )
+                            }
+                        } else {
+                            items(uiState.todayTasks) { task ->
+                                TaskCard(
+                                    task = task,
+                                    onClick = {
+                                        // Navigate to task detail or create report
+                                        navController.navigate("task_detail/${task.taskId}")
+                                    }
+                                )
+                            }
+                        }
+
+                        // Quick Actions
+                        item {
+                            QuickActions(
+                                onCreateReport = {
+                                    navController.navigate(Screen.InspectorNewReportScreen.route)
+                                },
+                                onViewAllTasks = {
+                                    navController.navigate(Screen.InspectorTaskScreen.route)
+                                },
+                                onViewHistory = {
+                                    navController.navigate(Screen.InspectorHistoryScreen.route)
+                                }
+                            )
+                        }
+                    }
                 }
 
                 else -> {
-                    DashboardMainContent(
-                        user = uiState.currentUser,
-                        statistics = sampleStats,
-                        recentReports = sampleReports,
-                        isFirstTimeUser = uiState.isEmpty,
-                        onCreateReportClick = { viewModel.onCreateReportClick() }
-                    )
+                    // Initial state or empty state
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+                    }
                 }
             }
         }
@@ -117,388 +215,9 @@ fun InspectorDashboardScreen(
 }
 
 @Composable
-fun DashboardMainContent(
-    user: com.phuonghai.inspection.domain.model.User?,
-    statistics: DashboardStatistics,
-    recentReports: List<ReportItem>,
-    isFirstTimeUser: Boolean,
-    onCreateReportClick: () -> Unit
-) {
-    if (isFirstTimeUser) {
-        EmptyDashboardView(onCreateReportClick)
-    } else {
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(MaterialTheme.colorScheme.background)
-                .padding(horizontal = 16.dp)
-                .padding(bottom = 100.dp)
-                .padding(top = 16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(20.dp)
-        ) {
-            // REMOVED: SyncStatusComponent() - was causing parameter errors
-
-            item {
-                InspectorInfoCard(user)
-            }
-
-            item {
-                SummarySection(user, statistics)
-            }
-
-            item {
-                RecentReportsSection(recentReports)
-            }
-        }
-    }
-}
-
-@Composable
-fun SummarySection(
-    user: com.phuonghai.inspection.domain.model.User?,
-    statistics: DashboardStatistics
-) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Text(
-            "Chào, ${user?.fullName ?: "Inspector"}",
-            fontSize = 24.sp,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onBackground,
-            modifier = Modifier.padding(bottom = 16.dp)
-        )
-
-        // Statistics cards with your color scheme
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            // First row - 3 cards
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                ReportCountCard(
-                    "Pending\nReview",
-                    statistics.pendingReports,
-                    StatusBlue,
-                    modifier = Modifier.weight(1f)
-                )
-                ReportCountCard(
-                    "Đã\nduyệt",
-                    statistics.approvedReports,
-                    StatusGreen,
-                    modifier = Modifier.weight(1f)
-                )
-                ReportCountCard(
-                    "Từ\nchối",
-                    statistics.rejectedReports,
-                    SafetyRed,
-                    modifier = Modifier.weight(1f)
-                )
-            }
-
-            // Second row - 2 cards (centered)
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                ReportCountCard(
-                    "Needs\nAttention",
-                    2,
-                    StatusOrange,
-                    modifier = Modifier.width(120.dp)
-                )
-                ReportCountCard(
-                    "Nháp",
-                    statistics.draftReports,
-                    StatusGray,
-                    modifier = Modifier.width(120.dp)
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun ReportCountCard(
-    label: String,
-    count: Int,
-    color: Color,
-    modifier: Modifier = Modifier
-) {
-    Card(
-        modifier = modifier.height(100.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        shape = RoundedCornerShape(12.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(8.dp)
-        ) {
-            Text(
-                text = count.toString(),
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold,
-                color = color
-            )
-            Text(
-                text = label,
-                fontSize = 16.sp,
-                color = MaterialTheme.colorScheme.onSurface,
-                textAlign = TextAlign.Center,
-                lineHeight = 16.sp
-            )
-        }
-    }
-}
-
-@Composable
-fun RecentReportsSection(reports: List<ReportItem>) {
-    Column(modifier = Modifier.fillMaxWidth()) {
-        Text(
-            "Báo cáo gần đây",
-            fontSize = 22.sp,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onBackground,
-            modifier = Modifier.padding(bottom = 12.dp)
-        )
-
-        if (reports.isEmpty()) {
-            Text(
-                "Không có báo cáo gần đây nào.",
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth()
-            )
-        } else {
-            Column(
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                reports.forEach { report ->
-                    ReportItemCard(report)
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun ReportItemCard(report: ReportItem) {
+private fun WelcomeHeader(user: User?) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        shape = RoundedCornerShape(12.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        report.title,
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        text = when (report.status) {
-                            "PENDING_REVIEW" -> "Pending Review"
-                            "APPROVED" -> "Đã duyệt"
-                            "REJECTED" -> "Từ chối"
-                            "NEEDS_ATTENTION" -> "Needs Attention"
-                            "DRAFT" -> "Nháp"
-                            else -> report.status
-                        },
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = when (report.status) {
-                            "PENDING_REVIEW" -> StatusBlue
-                            "APPROVED" -> StatusGreen
-                            "REJECTED" -> SafetyRed
-                            "NEEDS_ATTENTION" -> StatusOrange
-                            "DRAFT" -> StatusGray
-                            else -> MaterialTheme.colorScheme.onSurfaceVariant
-                        }
-                    )
-                }
-
-                // Status badge
-                Surface(
-                    color = when (report.status) {
-                        "APPROVED" -> StatusGreen.copy(alpha = 0.2f)
-                        "REJECTED" -> SafetyRed.copy(alpha = 0.2f)
-                        "PENDING_REVIEW" -> StatusBlue.copy(alpha = 0.2f)
-                        "NEEDS_ATTENTION" -> StatusOrange.copy(alpha = 0.2f)
-                        else -> MaterialTheme.colorScheme.surfaceVariant
-                    },
-                    shape = RoundedCornerShape(50),
-                    tonalElevation = 2.dp
-                ) {
-                    Text(
-                        text = when (report.status) {
-                            "APPROVED" -> "✓"
-                            "REJECTED" -> "✗"
-                            "PENDING_REVIEW" -> "⏳"
-                            "NEEDS_ATTENTION" -> "⚠"
-                            "DRAFT" -> "📝"
-                            else -> "•"
-                        },
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = when (report.status) {
-                            "APPROVED" -> StatusGreen
-                            "REJECTED" -> SafetyRed
-                            "PENDING_REVIEW" -> StatusBlue
-                            "NEEDS_ATTENTION" -> StatusOrange
-                            "DRAFT" -> StatusGray
-                            else -> MaterialTheme.colorScheme.onSurfaceVariant
-                        },
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
-                    )
-                }
-            }
-
-            Spacer(Modifier.height(8.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    "ID: ${report.id}",
-                    fontSize = 14.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Text(
-                    "${report.createdAt}",
-                    fontSize = 14.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun EmptyDashboardView(onCreateReportClick: () -> Unit) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .padding(24.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Icon(
-            imageVector = Icons.Default.Description,
-            contentDescription = "Empty Reports",
-            modifier = Modifier.size(72.dp),
-            tint = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Spacer(modifier = Modifier.height(16.dp))
-        Text(
-            text = "Chưa có báo cáo nào",
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onBackground,
-            fontSize = 20.sp,
-            fontWeight = FontWeight.Bold
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(
-            text = "Bạn chưa có báo cáo nào. Hãy tạo báo cáo đầu tiên để bắt đầu.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center
-        )
-        Spacer(modifier = Modifier.height(24.dp))
-        Button(
-            onClick = onCreateReportClick,
-            shape = RoundedCornerShape(12.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.primary
-            )
-        ) {
-            Text(
-                "Tạo báo cáo",
-                color = MaterialTheme.colorScheme.onPrimary,
-                fontWeight = FontWeight.Bold
-            )
-        }
-    }
-}
-
-@Composable
-fun DashboardErrorContent(
-    message: String,
-    onRetry: () -> Unit,
-    onDismiss: () -> Unit
-) {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background),
-        contentAlignment = Alignment.Center
-    ) {
-        AlertDialog(
-            onDismissRequest = onDismiss,
-            title = {
-                Text(
-                    "Lỗi",
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-            },
-            text = {
-                Text(
-                    message,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-            },
-            confirmButton = {
-                TextButton(onClick = onRetry) {
-                    Text(
-                        "Thử lại",
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = onDismiss) {
-                    Text(
-                        "Đóng",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            },
-            containerColor = MaterialTheme.colorScheme.surface
-        )
-    }
-}
-
-@Composable
-fun InspectorInfoCard(user: User?) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(bottom = 8.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         ),
@@ -509,7 +228,6 @@ fun InspectorInfoCard(user: User?) {
             modifier = Modifier.padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Header with icon and title
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -522,96 +240,84 @@ fun InspectorInfoCard(user: User?) {
                     modifier = Modifier.size(28.dp)
                 )
                 Text(
-                    text = "Thông tin Inspector",
+                    text = "Xin chào, ${user?.fullName ?: "Inspector"}",
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
             }
 
-            Divider(
-                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
-                thickness = 1.dp
+            Text(
+                text = "ID: INSP-${user?.uId?.take(6)?.uppercase() ?: "000000"}",
+                fontSize = 14.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
-            // Inspector details
-            Column(
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                InfoRow(
-                    label = "Họ và tên:",
-                    value = user?.fullName ?: "Chưa cập nhật",
-                    icon = Icons.Default.Badge,
-                )
+            Text(
+                text = "Hôm nay là ${SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date())}",
+                fontSize = 14.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
 
-                InfoRow(
-                    label = "ID Inspector:",
-                    value = "INSP-${user?.uId?.take(6)?.uppercase() ?: "000000"}",
-                    icon = Icons.Default.Numbers
-                )
+@Composable
+private fun StatisticsOverview(
+    pendingReports: Int,
+    todayTasks: Int,
+    totalReports: Int,
+    completedTasks: Int
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Text(
+                text = "Tổng quan",
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.padding(bottom = 16.dp)
+            )
 
-                InfoRow(
-                    label = "Số điện thoại:",
-                    value = user?.phoneNumber ?: "Chưa cập nhật",
-                    icon = Icons.Default.Phone
-                )
-
-                InfoRow(
-                    label = "Email:",
-                    value = user?.email ?: "Chưa cập nhật",
-                    icon = Icons.Default.Email
-                )
-
-                InfoRow(
-                    label = "Vai trò:",
-                    value = when(user?.role?.name) {
-                        "INSPECTOR" -> "Nhân viên kiểm tra"
-                        "SUPERVISOR" -> "Giám sát viên"
-                        else -> "Chưa xác định"
-                    },
-                    icon = Icons.Default.Work,
-                    valueColor = MaterialTheme.colorScheme.primary
-                )
-
-                if (!user?.supervisorId.isNullOrBlank()) {
-                    InfoRow(
-                        label = "Supervisor:",
-                        value = user?.supervisorId ?: "",
-                        icon = Icons.Default.SupervisorAccount
-                    )
-                }
-            }
-
-            // Status indicator
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(10.dp)
-                            .background(
-                                StatusGreen,
-                                shape = androidx.compose.foundation.shape.CircleShape
-                            )
-                    )
-                    Text(
-                        text = "Đang hoạt động",
-                        fontSize = 14.sp,
-                        color = StatusGreen,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
+                StatCard(
+                    number = pendingReports,
+                    label = "Chờ duyệt",
+                    color = StatusOrange,
+                    icon = Icons.Default.PendingActions
+                )
 
-                Text(
-                    text = "Cập nhật: ${getCurrentDateTime()}",
-                    fontSize = 14.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                StatCard(
+                    number = todayTasks,
+                    label = "Task hôm nay",
+                    color = StatusBlue,
+                    icon = Icons.Default.Today
+                )
+
+                StatCard(
+                    number = totalReports,
+                    label = "Tổng báo cáo",
+                    color = MaterialTheme.colorScheme.primary,
+                    icon = Icons.Default.Assignment
+                )
+
+                StatCard(
+                    number = completedTasks,
+                    label = "Đã hoàn thành",
+                    color = StatusGreen,
+                    icon = Icons.Default.CheckCircle
                 )
             }
         }
@@ -619,51 +325,417 @@ fun InspectorInfoCard(user: User?) {
 }
 
 @Composable
-private fun InfoRow(
+private fun StatCard(
+    number: Int,
     label: String,
-    value: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    valueColor: Color = MaterialTheme.colorScheme.onSurface
+    color: Color,
+    icon: ImageVector
 ) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Icon(
             imageVector = icon,
             contentDescription = label,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(20.dp)
+            tint = color,
+            modifier = Modifier.size(24.dp)
         )
 
+        Text(
+            text = number.toString(),
+            fontSize = 24.sp,
+            fontWeight = FontWeight.Bold,
+            color = color
+        )
+
+        Text(
+            text = label,
+            fontSize = 12.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center
+        )
+    }
+}
+
+@Composable
+private fun SectionHeader(
+    title: String,
+    count: Int,
+    icon: ImageVector,
+    color: Color
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = color.copy(alpha = 0.1f)
+        ),
+        shape = RoundedCornerShape(12.dp)
+    ) {
         Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text(
-                text = label,
-                fontSize = 15.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontWeight = FontWeight.Medium,
-                modifier = Modifier.weight(0.4f)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = title,
+                    tint = color,
+                    modifier = Modifier.size(24.dp)
+                )
+
+                Text(
+                    text = title,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+
+            Surface(
+                color = color,
+                shape = RoundedCornerShape(50),
+                tonalElevation = 2.dp
+            ) {
+                Text(
+                    text = count.toString(),
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun PendingReportCard(
+    report: ReportItem,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        shape = RoundedCornerShape(12.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(
+                    text = report.title,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+
+                Text(
+                    text = "Gửi lúc: ${report.createdAt}",
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            Column(
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Surface(
+                    color = StatusOrange.copy(alpha = 0.2f),
+                    shape = RoundedCornerShape(50),
+                    tonalElevation = 2.dp
+                ) {
+                    Text(
+                        text = "⏳ Chờ duyệt",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = StatusOrange,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
+                }
+
+                Icon(
+                    imageVector = Icons.Default.ArrowForward,
+                    contentDescription = "View details",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun TaskCard(
+    task: TaskItem,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        shape = RoundedCornerShape(12.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(
+                    text = task.title,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+
+                Text(
+                    text = task.description,
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+
+                Text(
+                    text = "Hạn: ${task.dueTime}",
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            Column(
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Surface(
+                    color = when (task.priority) {
+                        "HIGH" -> SafetyRed.copy(alpha = 0.2f)
+                        "NORMAL" -> StatusBlue.copy(alpha = 0.2f)
+                        else -> StatusGray.copy(alpha = 0.2f)
+                    },
+                    shape = RoundedCornerShape(50),
+                    tonalElevation = 2.dp
+                ) {
+                    Text(
+                        text = when (task.priority) {
+                            "HIGH" -> "🔴 Cao"
+                            "NORMAL" -> "🔵 Bình thường"
+                            else -> "⚪ Thấp"
+                        },
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = when (task.priority) {
+                            "HIGH" -> SafetyRed
+                            "NORMAL" -> StatusBlue
+                            else -> StatusGray
+                        },
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
+                }
+
+                Icon(
+                    imageVector = Icons.Default.ArrowForward,
+                    contentDescription = "View task",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun EmptyStateCard(
+    message: String,
+    icon: ImageVector
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+        ),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = message,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(48.dp)
             )
 
             Text(
-                text = value,
-                fontSize = 15.sp,
-                color = valueColor,
-                fontWeight = FontWeight.Normal,
-                modifier = Modifier.weight(0.6f),
-                textAlign = TextAlign.End
+                text = message,
+                fontSize = 14.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center
             )
         }
     }
 }
 
-// Helper function to get current date time
-private fun getCurrentDateTime(): String {
-    val sdf = java.text.SimpleDateFormat("dd/MM/yyyy HH:mm", java.util.Locale.getDefault())
-    return sdf.format(java.util.Date())
+@Composable
+private fun QuickActions(
+    onCreateReport: () -> Unit,
+    onViewAllTasks: () -> Unit,
+    onViewHistory: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(
+                text = "Thao tác nhanh",
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                QuickActionButton(
+                    icon = Icons.Default.Add,
+                    label = "Tạo báo cáo",
+                    onClick = onCreateReport
+                )
+
+                QuickActionButton(
+                    icon = Icons.Default.Assignment,
+                    label = "Xem tất cả task",
+                    onClick = onViewAllTasks
+                )
+
+                QuickActionButton(
+                    icon = Icons.Default.History,
+                    label = "Lịch sử",
+                    onClick = onViewHistory
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun QuickActionButton(
+    icon: ImageVector,
+    label: String,
+    onClick: () -> Unit
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.clickable { onClick() }
+    ) {
+        Surface(
+            color = MaterialTheme.colorScheme.primary,
+            shape = RoundedCornerShape(12.dp),
+            tonalElevation = 4.dp,
+            modifier = Modifier.size(48.dp)
+        ) {
+            Box(
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = label,
+                    tint = Color.White,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+        }
+
+        Text(
+            text = label,
+            fontSize = 12.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+            maxLines = 2
+        )
+    }
+}
+
+@Composable
+private fun DashboardErrorContent(
+    message: String,
+    onRetry: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Icon(
+            imageVector = Icons.Default.Error,
+            contentDescription = "Error",
+            tint = SafetyRed,
+            modifier = Modifier.size(64.dp)
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Text(
+            text = message,
+            fontSize = 16.sp,
+            color = MaterialTheme.colorScheme.onSurface,
+            textAlign = TextAlign.Center
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        ButtonUI(
+            text = "Thử lại",
+            onClick = onRetry
+        )
+    }
 }
