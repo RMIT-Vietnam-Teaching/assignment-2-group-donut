@@ -1,8 +1,14 @@
 package com.phuonghai.inspection.core.network
 
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.os.Build
 import android.util.Log
+import androidx.core.app.NotificationCompat
 import androidx.lifecycle.LifecycleService
 import androidx.lifecycle.lifecycleScope
+import com.phuonghai.inspection.R
 import com.phuonghai.inspection.core.sync.TaskSyncService
 import com.phuonghai.inspection.core.sync.ReportSyncService
 import dagger.hilt.android.AndroidEntryPoint
@@ -23,17 +29,49 @@ class NetworkConnectionListener : LifecycleService() {
 
     companion object {
         private const val TAG = "NetworkConnectionListener"
+        private const val CHANNEL_ID = "network_connection_listener"
+        private const val NOTIFICATION_ID = 1
     }
 
     override fun onCreate() {
         super.onCreate()
         Log.d(TAG, "NetworkConnectionListener service created")
+        createNotificationChannel()
+        startForeground(NOTIFICATION_ID, buildNotification())
         startNetworkMonitoring()
     }
 
     override fun onDestroy() {
         super.onDestroy()
         Log.d(TAG, "NetworkConnectionListener service destroyed")
+    }
+
+    override fun onStartCommand(intent: android.content.Intent?, flags: Int, startId: Int): Int {
+        super.onStartCommand(intent, flags, startId)
+        // Giữ service chạy tiếp khi bị hệ thống kill
+        return START_STICKY
+    }
+
+    private fun createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                CHANNEL_ID,
+                "Network Monitor",
+                NotificationManager.IMPORTANCE_LOW
+            )
+            channel.description = "Network connectivity monitoring"
+            val manager = getSystemService(NotificationManager::class.java)
+            manager.createNotificationChannel(channel)
+        }
+    }
+
+    private fun buildNotification(): Notification {
+        return NotificationCompat.Builder(this, CHANNEL_ID)
+            .setContentTitle("Monitoring network")
+            .setContentText("Synchronizing when online")
+            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setOngoing(true)
+            .build()
     }
 
     private fun startNetworkMonitoring() {
@@ -43,7 +81,7 @@ class NetworkConnectionListener : LifecycleService() {
             var previousState: Boolean? = null
 
             networkMonitor.isConnected.collect { isConnected ->
-                // Only act on state changes
+                // Chỉ xử lý khi trạng thái thay đổi
                 if (previousState != null && previousState != isConnected) {
                     if (isConnected) {
                         Log.d(TAG, "Network connected - starting auto sync")
@@ -62,10 +100,9 @@ class NetworkConnectionListener : LifecycleService() {
         try {
             Log.d(TAG, "Network is available - performing auto sync")
 
-            // Auto sync tasks when network is available
+            // Sync task
             Log.d(TAG, "Starting automatic task sync...")
             val taskSyncResult = taskSyncService.autoSyncTasks()
-
             when (taskSyncResult) {
                 is com.phuonghai.inspection.core.sync.TaskSyncResult.Success -> {
                     Log.d(TAG, "Task sync completed: ${taskSyncResult.taskCount} tasks synced")
@@ -75,10 +112,9 @@ class NetworkConnectionListener : LifecycleService() {
                 }
             }
 
-            // Also sync pending reports
+            // Sync report
             Log.d(TAG, "Starting automatic report sync...")
-            val reportSyncResult = reportSyncService.syncPendingReports()
-
+            val reportSyncResult = reportSyncService.syncAllPendingReports()
             when (reportSyncResult) {
                 is com.phuonghai.inspection.core.sync.SyncResult.Success -> {
                     Log.d(TAG, "Report sync completed: ${reportSyncResult.syncedCount} reports synced")
@@ -95,7 +131,6 @@ class NetworkConnectionListener : LifecycleService() {
 
     private fun onNetworkDisconnected() {
         Log.d(TAG, "Network disconnected - switching to offline mode")
-        // You can add any offline-specific logic here if needed
-        // For example, showing notifications, updating UI state, etc.
+        // Logic offline thêm ở đây nếu cần
     }
 }

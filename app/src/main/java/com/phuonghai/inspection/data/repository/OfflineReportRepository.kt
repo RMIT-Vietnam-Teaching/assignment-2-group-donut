@@ -14,7 +14,11 @@ import com.phuonghai.inspection.domain.model.AssignStatus
 import com.phuonghai.inspection.domain.model.Report
 import com.phuonghai.inspection.domain.model.SyncStatus
 import com.phuonghai.inspection.domain.repository.IReportRepository
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flow
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -24,7 +28,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 @Singleton
 class OfflineReportRepository @Inject constructor(
     private val localReportDao: LocalReportDao,
-    private val onlineReportRepository: ReportRepositoryImpl,
+    private val onlineReportRepository: IReportRepository,
     private val networkMonitor: NetworkMonitor,
     private val fileManager: OfflineFileManager,
     @ApplicationContext private val context: Context
@@ -41,7 +45,24 @@ class OfflineReportRepository @Inject constructor(
             if (isConnected && report.assignStatus != AssignStatus.DRAFT) {
                 // Online: Try to create report directly
                 Log.d(TAG, "Creating report online: ${report.title}")
-                onlineReportRepository.createReport(report)
+
+                // Ensure the remote repository always receives a synced report
+                val syncedReport = report.copy(syncStatus = SyncStatus.SYNCED)
+                val result = onlineReportRepository.createReport(syncedReport)
+
+                if (result.isSuccess) {
+                    val reportId = result.getOrNull()!!
+                    val localReport = report.copy(
+                        reportId = reportId,
+                        createdAt = report.createdAt ?: Timestamp.now(),
+                        syncStatus = SyncStatus.SYNCED
+                    )
+                    localReportDao.insertReport(localReport.toLocalEntity())
+                    val unsyncedCount = localReportDao.getUnsyncedReportsCountForInspector(localReport.inspectorId)
+                    localReportDao.trimReports(localReport.inspectorId, 30 + unsyncedCount)
+                }
+
+                result
             } else {
                 // Offline or Draft: Save locally
                 Log.d(TAG, "Saving report offline: ${report.title}")
@@ -55,6 +76,8 @@ class OfflineReportRepository @Inject constructor(
                 // Save to local database
                 val localEntity = reportWithId.toLocalEntity()
                 localReportDao.insertReport(localEntity)
+                val unsyncedCount = localReportDao.getUnsyncedReportsCountForInspector(reportWithId.inspectorId)
+                localReportDao.trimReports(reportWithId.inspectorId, 30 + unsyncedCount)
 
                 // Schedule sync if not connected and not a draft
                 if (!isConnected && report.assignStatus != AssignStatus.DRAFT) {
@@ -300,6 +323,8 @@ class OfflineReportRepository @Inject constructor(
                 )
 
                 localReportDao.insertReport(localEntity)
+                val unsyncedCount = localReportDao.getUnsyncedReportsCountForInspector(reportWithMedia.inspectorId)
+                localReportDao.trimReports(reportWithMedia.inspectorId, 30 + unsyncedCount)
 
                 // Schedule sync if not a draft
                 if (report.assignStatus != AssignStatus.DRAFT) {
@@ -321,5 +346,35 @@ class OfflineReportRepository @Inject constructor(
 
     override suspend fun updateStatus(reportId: String, status: String): Result<Unit> {
         return onlineReportRepository.updateStatus(reportId, status)
+    }
+
+    override fun getReportsByInspectorId(inspectorId: String): Flow<List<Report>> {
+        return flow {
+            val localReports = localReportDao.getReportsByInspectorId(inspectorId).first()
+
+            if (networkMonitor.isConnected.first()) {
+                val unsyncedIds = localReports.filter { it.needsSync }.map { it.reportId }.toSet()
+                val remoteReports = onlineReportRepository.getReportsByInspectorId(inspectorId).first()
+
+                remoteReports.forEach { report ->
+                    val localReport = localReportDao.getReportById(report.reportId)
+                    if (localReport?.needsSync == true) {
+                        // Skip overwriting local report with unsynced changes
+                        return@forEach
+                    }
+
+                    val entity = report.copy(syncStatus = SyncStatus.SYNCED)
+                        .toLocalEntity()
+                    localReportDao.insertReport(entity)
+                }
+                val unsyncedCount = localReportDao.getUnsyncedReportsCountForInspector(inspectorId)
+                localReportDao.trimReports(inspectorId, 30 + unsyncedCount)
+            }
+
+            emitAll(
+                localReportDao.getReportsByInspectorId(inspectorId)
+                    .map { entities -> entities.map { it.toDomainModel() } }
+            )
+        }
     }
 }

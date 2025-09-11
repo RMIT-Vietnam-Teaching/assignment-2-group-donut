@@ -9,7 +9,10 @@ import com.google.firebase.firestore.Query
 import com.google.firebase.storage.storage
 import com.phuonghai.inspection.domain.model.AssignStatus
 import com.phuonghai.inspection.domain.model.Report
+import com.phuonghai.inspection.domain.model.SyncStatus
 import com.phuonghai.inspection.domain.repository.IReportRepository
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.tasks.await
 import java.util.UUID
 import javax.inject.Inject
@@ -30,7 +33,8 @@ class ReportRepositoryImpl @Inject constructor(
             val reportId = UUID.randomUUID().toString()
             val reportWithId = report.copy(
                 reportId = reportId,
-                createdAt = Timestamp.now()
+                createdAt = Timestamp.now(),
+                syncStatus = SyncStatus.SYNCED
             )
 
             firestore.collection(REPORTS_COLLECTION)
@@ -198,6 +202,21 @@ class ReportRepositoryImpl @Inject constructor(
         } catch (e: Exception) {
             Log.e(TAG, "Error updating report status", e)
             Result.failure(e)
+        }
+    }
+
+    override fun getReportsByInspectorId(inspectorId: String): Flow<List<Report>> = flow {
+        try {
+            val snapshot = firestore.collection(REPORTS_COLLECTION)
+                .whereEqualTo("inspectorId", inspectorId)
+                .orderBy("createdAt", Query.Direction.DESCENDING)
+                .limit(30)
+                .get()
+                .await()
+            emit(snapshot.toObjects(Report::class.java))
+        } catch (e: Exception) {
+            Log.e(TAG, "Error getting reports for inspector", e)
+            emit(emptyList())
         }
     }
 

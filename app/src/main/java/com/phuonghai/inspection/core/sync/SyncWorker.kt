@@ -38,8 +38,8 @@ class SyncWorker @AssistedInject constructor(
 
             Log.d(TAG, "Found $unsyncedCount reports to sync")
 
-            // Perform sync
-            when (val syncResult = syncService.syncPendingReports()) {
+            // Perform sync - FIXED: Use syncAllPendingReports and add else branch
+            when (val syncResult = syncService.syncAllPendingReports()) {
                 is SyncResult.Success -> {
                     Log.d(TAG, "Sync completed successfully. Synced: ${syncResult.syncedCount}, Failed: ${syncResult.failedCount}")
 
@@ -53,6 +53,11 @@ class SyncWorker @AssistedInject constructor(
                 is SyncResult.Error -> {
                     Log.e(TAG, "Sync failed", syncResult.exception)
                     Result.retry()
+                }
+                // FIXED: Add else branch to make when exhaustive
+                else -> {
+                    Log.w(TAG, "Unknown sync result type: $syncResult")
+                    Result.failure()
                 }
             }
         } catch (e: Exception) {

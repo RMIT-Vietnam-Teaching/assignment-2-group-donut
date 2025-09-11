@@ -7,7 +7,7 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface LocalReportDao {
 
-    @Query("SELECT * FROM local_reports WHERE inspectorId = :inspectorId")
+    @Query("SELECT * FROM local_reports WHERE inspectorId = :inspectorId ORDER BY createdAt DESC")
     fun getReportsByInspectorId(inspectorId: String): Flow<List<LocalReportEntity>>
 
     @Query("SELECT * FROM local_reports WHERE reportId = :reportId")
@@ -24,6 +24,9 @@ interface LocalReportDao {
 
     @Query("SELECT COUNT(*) FROM local_reports WHERE needsSync = 1")
     suspend fun getUnsyncedReportsCount(): Int
+
+    @Query("SELECT COUNT(*) FROM local_reports WHERE inspectorId = :inspectorId AND needsSync = 1")
+    suspend fun getUnsyncedReportsCountForInspector(inspectorId: String): Int
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertReport(report: LocalReportEntity)
@@ -51,4 +54,10 @@ interface LocalReportDao {
 
     @Query("DELETE FROM local_reports WHERE createdAt < :cutoffTime AND needsSync = 0")
     suspend fun deleteOldSyncedReports(cutoffTime: Long)
+
+    @Query(
+        "DELETE FROM local_reports WHERE inspectorId = :inspectorId AND needsSync = 0 AND reportId NOT IN (" +
+                "SELECT reportId FROM local_reports WHERE inspectorId = :inspectorId ORDER BY createdAt DESC LIMIT :limit)"
+    )
+    suspend fun trimReports(inspectorId: String, limit: Int)
 }
