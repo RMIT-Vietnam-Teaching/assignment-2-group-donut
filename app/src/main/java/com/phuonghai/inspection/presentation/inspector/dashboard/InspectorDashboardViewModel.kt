@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
+import com.phuonghai.inspection.core.network.NetworkMonitor
 import com.phuonghai.inspection.domain.model.Report
 import com.phuonghai.inspection.domain.model.ResponseStatus
 import com.phuonghai.inspection.domain.model.Task
@@ -26,14 +27,28 @@ import javax.inject.Inject
 class InspectorDashboardViewModel @Inject constructor(
     private val getUserInformationUseCase: GetUserInformationUseCase,
     private val getInspectorTasksUseCase: GetInspectorTasksUseCase,
-    private val getReportsByInspectorUseCase: GetReportsByInspectorUseCase
+    private val getReportsByInspectorUseCase: GetReportsByInspectorUseCase,
+    private val networkMonitor: NetworkMonitor
 ) : ViewModel() {
 
     private val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
 
     private val _uiState = MutableStateFlow(InspectorDashboardUiState())
     val uiState: StateFlow<InspectorDashboardUiState> = _uiState.asStateFlow()
+    private val _isOnline = MutableStateFlow(false)
+    val isOnline: StateFlow<Boolean> = _isOnline.asStateFlow()
 
+    init {
+        observeNetworkStatus()
+    }
+
+    private fun observeNetworkStatus() {
+        viewModelScope.launch {
+            networkMonitor.isConnected.collect { isConnected ->
+                _isOnline.value = isConnected
+            }
+        }
+    }
     companion object {
         private const val TAG = "InspectorDashboardViewModel"
     }

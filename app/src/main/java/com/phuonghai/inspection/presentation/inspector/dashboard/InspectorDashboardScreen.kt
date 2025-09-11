@@ -25,19 +25,12 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.phuonghai.inspection.domain.model.User
 import com.phuonghai.inspection.presentation.generalUI.ButtonUI
+import com.phuonghai.inspection.presentation.inspector.task.TaskNetworkStatusIndicator
 import com.phuonghai.inspection.presentation.navigation.Screen
 import com.phuonghai.inspection.presentation.theme.*
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-
-// Theme colors - add these if not already defined in your theme files
-val StatusOrange = Color(0xFFFF9800)
-val StatusBlue = Color(0xFF2196F3)
-val StatusGreen = Color(0xFF4CAF50)
-val StatusGray = Color(0xFF9E9E9E)
-val SafetyRed = Color(0xFFF44336)
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun InspectorDashboardScreen(
@@ -45,7 +38,7 @@ fun InspectorDashboardScreen(
     navController: NavController
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-
+    val isOnline by viewModel.isOnline.collectAsStateWithLifecycle()
     LaunchedEffect(Unit) {
         viewModel.loadDashboardData()
     }
@@ -65,6 +58,8 @@ fun InspectorDashboardScreen(
                             color = MaterialTheme.colorScheme.onSurface,
                             fontWeight = FontWeight.Bold
                         )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        TaskNetworkStatusIndicator(isOnline = isOnline)
                         ButtonUI(
                             text = "Chat",
                             onClick = {
@@ -147,8 +142,10 @@ fun InspectorDashboardScreen(
                                 PendingReportCard(
                                     report = report,
                                     onClick = {
-                                        // Navigate to report detail
-                                        navController.navigate("report_detail/${report.id}")
+                                        // Điều hướng đến màn hình chi tiết báo cáo của inspector
+                                        navController.navigate(
+                                            Screen.InspectorReportDetailScreen.createRoute(report.id)
+                                        )
                                     }
                                 )
                             }
@@ -737,5 +734,28 @@ private fun DashboardErrorContent(
             text = "Thử lại",
             onClick = onRetry
         )
+    }
+    @Composable
+    fun TaskNetworkStatusIndicator(
+        isOnline: Boolean,
+        modifier: Modifier = Modifier
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = modifier
+        ) {
+            Icon(
+                imageVector = if (isOnline) Icons.Default.Cloud else Icons.Default.CloudOff,
+                contentDescription = if (isOnline) "Online" else "Offline",
+                tint = if (isOnline) Color(0xFF4CAF50) else Color(0xFFFF9800),
+                modifier = Modifier.size(16.dp)
+            )
+            Spacer(modifier = Modifier.width(4.dp))
+            Text(
+                text = if (isOnline) "Online" else "Offline",
+                style = MaterialTheme.typography.labelSmall,
+                color = if (isOnline) Color(0xFF4CAF50) else Color(0xFFFF9800)
+            )
+        }
     }
 }

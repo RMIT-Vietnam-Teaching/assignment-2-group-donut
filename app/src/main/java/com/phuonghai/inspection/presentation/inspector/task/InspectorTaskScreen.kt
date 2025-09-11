@@ -803,49 +803,54 @@ fun TaskCard(
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        // Status update button
+                        // Chỉ hiển thị các nút hành động khi task chưa hoàn thành hoặc chưa bị hủy
                         if (task.status != TaskStatus.COMPLETED && task.status != TaskStatus.CANCELLED) {
-                            Button(
-                                onClick = {
-                                    val newStatus = when (task.status) {
-                                        TaskStatus.ASSIGNED -> TaskStatus.IN_PROGRESS
-                                        TaskStatus.IN_PROGRESS -> TaskStatus.COMPLETED
-                                        else -> TaskStatus.IN_PROGRESS
+
+                            // Nút 1: Cập nhật trạng thái
+                            when (task.status) {
+                                TaskStatus.ASSIGNED -> {
+                                    Button(
+                                        onClick = { onStatusUpdate(task.taskId, TaskStatus.IN_PROGRESS) },
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = StatusBlue
+                                        ),
+                                        modifier = Modifier.height(32.dp)
+                                    ) {
+                                        Text("Start", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
                                     }
-                                    onStatusUpdate(task.taskId, newStatus)
-                                },
+                                }
+                                TaskStatus.IN_PROGRESS -> {
+                                    // ======= ĐOẠN MÃ ĐÃ SỬA LỖI =======
+                                    OutlinedButton(
+                                        onClick = { /* Do nothing */ },
+                                        enabled = false,
+                                        modifier = Modifier.height(32.dp),
+                                        border = BorderStroke(1.dp, StatusOrange.copy(alpha = 0.5f)), // Sửa ở đây
+                                        colors = ButtonDefaults.outlinedButtonColors(
+                                            disabledContentColor = StatusOrange // Chỉ dùng tham số hợp lệ
+                                        )
+                                    ) {
+                                        Text("In Progress", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                    }
+                                }
+                                else -> {}
+                            }
+
+                            // Nút 2: Tạo/Tiếp tục Báo cáo
+                            Button(
+                                onClick = if (hasDraft) onContinueDraftClick else onCreateReportClick,
                                 colors = ButtonDefaults.buttonColors(
-                                    containerColor = StatusOrange
+                                    containerColor = if (hasDraft) StatusOrange else SafetyYellow
                                 ),
                                 modifier = Modifier.height(32.dp)
                             ) {
                                 Text(
-                                    text = when (task.status) {
-                                        TaskStatus.ASSIGNED -> "Start"
-                                        TaskStatus.IN_PROGRESS -> "Complete"
-                                        else -> "Update"
-                                    },
+                                    text = if (hasDraft) "Continue Draft" else "New Report",
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = Color.White
+                                    color = if (hasDraft) Color.White else Color.Black
                                 )
                             }
-                        }
-
-                        // Report button with draft functionality
-                        Button(
-                            onClick = if (hasDraft) onContinueDraftClick else onCreateReportClick,
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = if (hasDraft) StatusOrange else SafetyYellow
-                            ),
-                            modifier = Modifier.height(32.dp)
-                        ) {
-                            Text(
-                                text = if (hasDraft) "Continue Draft" else "New Report",
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = if (hasDraft) Color.White else Color.Black
-                            )
                         }
                     }
                 }
