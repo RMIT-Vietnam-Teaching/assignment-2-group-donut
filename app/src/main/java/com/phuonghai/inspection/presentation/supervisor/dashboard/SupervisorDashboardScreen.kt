@@ -128,15 +128,15 @@ fun SupervisorWelcomeSection(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
-            "Chào, ${user?.fullName ?: "Supervisor"}",
+            "Hi, ${user?.fullName ?: "Supervisor"}",
             fontSize = 24.sp,
             fontWeight = FontWeight.Bold,
             color = Color.White,
             modifier = Modifier.padding(bottom = 8.dp)
         )
         val teamMessage = when {
-            teamStats == null -> "Đang tải thông tin team..."
-            teamStats.totalReports == 0 -> "Chưa có báo cáo nào từ team"
+            teamStats == null -> "Loading information..."
+            teamStats.totalReports == 0 -> "Not have any report"
             else -> null // we'll build styled text instead
         }
 
@@ -151,7 +151,7 @@ fun SupervisorWelcomeSection(
         } else {
             Text(
                 text = buildAnnotatedString {
-                    append("Hôm nay có ")
+                    append("Today you have ")
 
                     withStyle(
                         style = SpanStyle(
@@ -162,7 +162,7 @@ fun SupervisorWelcomeSection(
                         append(teamStats!!.pendingReviews.toString())
                     }
 
-                    append(" báo cáo cần duyệt từ team")
+                    append(" need to consider from team")
                 },
                 fontSize = 17.sp,
                 color = Color.LightGray,
@@ -179,10 +179,10 @@ fun TeamSummarySection(teamStats: TeamStatistics) {
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceAround
     ) {
-        TeamStatCard("Chờ duyệt", teamStats.pendingReviews, Color(0xFF2196F3))
-        TeamStatCard("Đã duyệt", teamStats.approvedReports, Color(0xFF4CAF50))
-        TeamStatCard("Từ chối", teamStats.rejectedReports, Color(0xFFE53935))
-        TeamStatCard("Tổng cộng", teamStats.totalReports, Color(0xFFFB8C00))
+        TeamStatCard("Pending", teamStats.pendingReviews, Color(0xFF2196F3))
+        TeamStatCard("Approved", teamStats.approvedReports, Color(0xFF4CAF50))
+        TeamStatCard("Rejected", teamStats.rejectedReports, Color(0xFFE53935))
+        TeamStatCard("Total", teamStats.totalReports, Color(0xFFFB8C00))
     }
 }
 
@@ -225,7 +225,7 @@ fun PendingReviewsSection(
         modifier = Modifier.fillMaxWidth()
     ) {
         Text(
-            "Báo cáo cần duyệt",
+            "Report to consider",
             fontSize = 24.sp,
             fontWeight = FontWeight.Bold,
             color = Color.White,
@@ -234,7 +234,7 @@ fun PendingReviewsSection(
 
         if (pendingReviews.isEmpty()) {
             Text(
-                "Không có báo cáo nào cần duyệt",
+                "Not have any report to consider",
                 color = Color.Gray,
                 fontSize = 14.sp,
                 textAlign = TextAlign.Center,
@@ -256,7 +256,7 @@ fun PendingReviewsSection(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
-                        text = if (showAll) "Thu nhỏ" else "Xem thêm (${pendingReviews.size - 5} báo cáo khác)",
+                        text = if (showAll) "Close" else "See more (${pendingReviews.size - 5} another reports)",
                         color = MaterialTheme.colorScheme.primary,
                         fontSize = 14.sp,
                         textAlign = TextAlign.Center
@@ -331,7 +331,7 @@ fun PendingReportCard(
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.Check,
-                                        contentDescription = "Duyệt",
+                                        contentDescription = "Approved",
                                         tint = Color(0xFF4CAF50),
                                         modifier = Modifier.size(24.dp)
                                     )
@@ -343,7 +343,7 @@ fun PendingReportCard(
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.Close,
-                                        contentDescription = "Từ chối",
+                                        contentDescription = "Rejected",
                                         tint = Color(0xFFE53935),
                                         modifier = Modifier.size(24.dp)
                                     )
@@ -390,16 +390,16 @@ fun ErrorContent(
     ) {
         AlertDialog(
             onDismissRequest = onDismiss,
-            title = { Text("Lỗi") },
+            title = { Text("Error") },
             text = { Text(message) },
             confirmButton = {
                 TextButton(onClick = onRetry) {
-                    Text("Thử lại")
+                    Text("Retry")
                 }
             },
             dismissButton = {
                 TextButton(onClick = onDismiss) {
-                    Text("Đóng")
+                    Text("Close")
                 }
             }
         )

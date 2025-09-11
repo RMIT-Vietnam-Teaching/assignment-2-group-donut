@@ -19,6 +19,7 @@ import com.phuonghai.inspection.data.local.database.AppDatabase
 import com.phuonghai.inspection.data.repository.AuthRepositoryImpl
 import com.phuonghai.inspection.data.repository.BranchRepositoryImpl
 import com.phuonghai.inspection.data.repository.ChatMessageRepositoryImpl
+import com.phuonghai.inspection.data.repository.NotificationRepositoryImpl
 import com.phuonghai.inspection.data.repository.OfflineReportRepository
 import com.phuonghai.inspection.data.repository.OfflineTaskRepository
 import com.phuonghai.inspection.data.repository.ReportRepositoryImpl
@@ -27,6 +28,7 @@ import com.phuonghai.inspection.data.repository.UserRepositoryImpl
 import com.phuonghai.inspection.domain.repository.IAuthRepository
 import com.phuonghai.inspection.domain.repository.IBranchRepository
 import com.phuonghai.inspection.domain.repository.IChatMessageRepository
+import com.phuonghai.inspection.domain.repository.INotificationRepository
 import com.phuonghai.inspection.domain.repository.IReportRepository
 import com.phuonghai.inspection.domain.repository.ITaskRepository
 import com.phuonghai.inspection.domain.repository.IUserRepository
@@ -176,11 +178,18 @@ object AppModule {
 
     @Provides
     @Singleton
+    fun provideNotificationRepository(firestore: FirebaseFirestore): INotificationRepository {
+        return NotificationRepositoryImpl(firestore)
+    }
+
+    @Provides
+    @Singleton
     fun provideChatMessageRepository(
         firebaseDatabase: FirebaseDatabase
     ): IChatMessageRepository {
         return ChatMessageRepositoryImpl(firebaseDatabase)
     }
+
 
     // 🆕 UPDATED: Improved Sync Services
     @Provides
