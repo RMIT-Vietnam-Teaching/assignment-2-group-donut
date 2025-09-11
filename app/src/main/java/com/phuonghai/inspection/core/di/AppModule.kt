@@ -31,6 +31,7 @@ import com.phuonghai.inspection.domain.repository.IReportRepository
 import com.phuonghai.inspection.domain.repository.ITaskRepository
 import com.phuonghai.inspection.domain.repository.IUserRepository
 import com.phuonghai.inspection.domain.usecase.GetFirebaseReportsByInspectorUseCase
+import com.phuonghai.inspection.domain.usecase.GetPendingReportsBySupervisorUseCase
 import com.phuonghai.inspection.domain.usecase.auth.SignOutUseCase
 import com.phuonghai.inspection.domain.usecase.GetInspectorTasksUseCase
 import com.phuonghai.inspection.domain.usecase.GetReportsByInspectorUseCase
@@ -256,12 +257,12 @@ object AppModule {
     @Provides
     @Singleton
     fun provideInspectorHistoryViewModel(
-        reportRepository: IReportRepository,
+        getFirebaseReportsByInspectorUseCase: GetFirebaseReportsByInspectorUseCase,
         localReportDao: LocalReportDao,
         networkMonitor: NetworkMonitor
     ): InspectorHistoryViewModel {
         return InspectorHistoryViewModel(
-            reportRepository,
+            getFirebaseReportsByInspectorUseCase,
             localReportDao,
             networkMonitor
         )
@@ -287,5 +288,13 @@ object AppModule {
         firebaseReportRepository: ReportRepositoryImpl
     ): GetFirebaseReportsByInspectorUseCase {
         return GetFirebaseReportsByInspectorUseCase(firebaseReportRepository)
+    }
+
+    @Provides
+    @Singleton
+    fun provideGetPendingReportsBySupervisorUseCase(
+        reportRepository: IReportRepository
+    ): GetPendingReportsBySupervisorUseCase {
+        return GetPendingReportsBySupervisorUseCase(reportRepository)
     }
 }

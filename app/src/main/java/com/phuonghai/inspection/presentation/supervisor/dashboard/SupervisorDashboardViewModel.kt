@@ -8,7 +8,7 @@ import com.phuonghai.inspection.domain.model.Report
 import com.phuonghai.inspection.domain.model.ResponseStatus
 import com.phuonghai.inspection.domain.model.TaskStatus
 import com.phuonghai.inspection.domain.model.User
-import com.phuonghai.inspection.domain.usecase.GetReportsBySupervisorUseCase
+import com.phuonghai.inspection.domain.usecase.GetPendingReportsBySupervisorUseCase
 import com.phuonghai.inspection.domain.usecase.GetTaskIdByReportIdUseCase
 import com.phuonghai.inspection.domain.usecase.GetUserInformationUseCase
 import com.phuonghai.inspection.domain.usecase.UpdateResponseStatusReportUseCase
@@ -23,7 +23,7 @@ import kotlin.collections.emptyList as emptyList1
 
 @HiltViewModel
 class SupervisorDashboardViewModel @Inject constructor(
-    private val getReportsBySupervisorUseCase: GetReportsBySupervisorUseCase,
+    private val getPendingReportsBySupervisorUseCase: GetPendingReportsBySupervisorUseCase,
     private val getUserInformationUseCase: GetUserInformationUseCase,
     private val updateResponseStatusReportUseCase: UpdateResponseStatusReportUseCase,
     private val getTaskIdByReportIdUseCase: GetTaskIdByReportIdUseCase,
@@ -47,19 +47,16 @@ class SupervisorDashboardViewModel @Inject constructor(
     fun loadReports() {
         viewModelScope.launch {
             _isLoading.value = true
-            getReportsBySupervisorUseCase(currentUserId)
+            getPendingReportsBySupervisorUseCase(currentUserId)
                 .onSuccess { reports ->
-
-                    // 👇 Compute statistics
                     val stats = TeamStatistics(
-                        pendingReviews = reports.count { it.responseStatus.name == "PENDING" },
-                        approvedReports = reports.count { it.responseStatus.name == "APPROVED" },
-                        rejectedReports = reports.count { it.responseStatus.name == "REJECTED" },
+                        pendingReviews = reports.size,
+                        approvedReports = 0,
+                        rejectedReports = 0,
                         totalReports = reports.size
                     )
                     _statistic.value = stats
-                    // assign only pending reports to _reports
-                    _reports.value = reports.filter { it.responseStatus.name == "PENDING" }
+                    _reports.value = reports
                     _isLoading.value = false
                 }
                 .onFailure { e ->
