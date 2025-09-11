@@ -1,7 +1,7 @@
 package com.phuonghai.inspection.domain.usecase
 
-import com.phuonghai.inspection.domain.model.Report
 import com.phuonghai.inspection.data.repository.ReportRepositoryImpl
+import com.phuonghai.inspection.domain.model.Report
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
 

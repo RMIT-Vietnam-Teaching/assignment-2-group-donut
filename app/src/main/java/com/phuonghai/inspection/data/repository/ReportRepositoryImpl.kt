@@ -13,6 +13,7 @@ import com.phuonghai.inspection.domain.model.ResponseStatus
 import com.phuonghai.inspection.domain.model.SyncStatus
 import com.phuonghai.inspection.domain.repository.IReportRepository
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.tasks.await
 import java.util.UUID
@@ -239,18 +240,16 @@ class ReportRepositoryImpl @Inject constructor(
     }
 
     override fun getReportsByInspectorId(inspectorId: String): Flow<List<Report>> = flow {
-        try {
-            val snapshot = firestore.collection(REPORTS_COLLECTION)
-                .whereEqualTo("inspectorId", inspectorId)
-                .orderBy("createdAt", Query.Direction.DESCENDING)
-                .limit(30)
-                .get()
-                .await()
-            emit(snapshot.toObjects(Report::class.java))
-        } catch (e: Exception) {
-            Log.e(TAG, "Error getting reports for inspector", e)
-            emit(emptyList())
-        }
+        // Chỉ thực hiện logic chính ở đây
+        val snapshot = firestore.collection(REPORTS_COLLECTION)
+            .whereEqualTo("inspectorId", inspectorId)
+            .orderBy("createdAt", Query.Direction.DESCENDING)
+            .get()
+            .await()
+        emit(snapshot.toObjects(Report::class.java))
+    }.catch { e -> // <-- Sử dụng toán tử .catch để xử lý lỗi
+        Log.e(TAG, "Error getting reports for inspector", e)
+        emit(emptyList())
     }
 
 
