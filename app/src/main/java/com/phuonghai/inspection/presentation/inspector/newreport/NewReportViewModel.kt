@@ -13,7 +13,9 @@ import com.phuonghai.inspection.data.repository.OfflineReportRepository
 import com.phuonghai.inspection.domain.common.Priority
 import com.phuonghai.inspection.domain.model.*
 import com.phuonghai.inspection.domain.repository.IAuthRepository
+import com.phuonghai.inspection.domain.repository.IBranchRepository
 import com.phuonghai.inspection.domain.repository.IReportRepository
+import com.phuonghai.inspection.domain.repository.ITaskRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -21,7 +23,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.util.Locale
+import java.util.*
 import javax.inject.Inject
 
 // Data class để quản lý toàn bộ trạng thái của màn hình
@@ -54,6 +56,8 @@ data class NewReportUiState(
 class NewReportViewModel @Inject constructor(
     private val authRepository: IAuthRepository,
     private val reportRepository: IReportRepository,
+    private val taskRepository: ITaskRepository, // <-- THÊM VÀO
+    private val branchRepository: IBranchRepository, // <-- THÊM VÀO
     @ApplicationContext private val context: Context
 ) : ViewModel() {
 
@@ -112,15 +116,20 @@ class NewReportViewModel @Inject constructor(
 
     fun setTaskId(taskId: String) {
         _uiState.update { it.copy(currentTaskId = taskId) }
+        fetchAndSetTaskAddress(taskId) // <-- TỰ ĐỘNG LẤY ĐỊA CHỈ
     }
 
     fun loadDraftByTaskId(taskId: String) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, currentTaskId = taskId) }
+            // Luôn lấy địa chỉ từ task gốc trước
+            fetchAndSetTaskAddress(taskId)
+
             reportRepository.getDraftReportByTaskId(taskId).fold(
                 onSuccess = { report ->
                     if (report != null) {
-                        populateStateFromReport(report, "Draft loaded from Task ID")
+                        // Ghi đè thông tin từ draft, nhưng giữ lại địa chỉ từ task
+                        populateStateFromReport(report, "Draft loaded from Task ID", keepAddress = true)
                     } else {
                         _uiState.update { it.copy(isLoading = false) }
                     }
@@ -139,6 +148,10 @@ class NewReportViewModel @Inject constructor(
                 onSuccess = { report ->
                     if (report != null) {
                         populateStateFromReport(report, "Draft loaded from Report ID")
+                        // Lấy địa chỉ từ task liên quan của draft
+                        if (report.taskId.isNotBlank()) {
+                            fetchAndSetTaskAddress(report.taskId)
+                        }
                     } else {
                         _uiState.update { it.copy(isLoading = false, message = "Draft not found") }
                     }
@@ -150,8 +163,9 @@ class NewReportViewModel @Inject constructor(
         }
     }
 
-    private fun populateStateFromReport(report: Report, message: String) {
+    private fun populateStateFromReport(report: Report, message: String, keepAddress: Boolean = false) {
         _uiState.update {
+            val currentAddress = if (keepAddress) it.address else report.address
             it.copy(
                 isLoading = false,
                 currentReportId = report.reportId,
@@ -159,7 +173,7 @@ class NewReportViewModel @Inject constructor(
                 title = report.title,
                 description = report.description,
                 score = report.score?.toString() ?: "",
-                address = report.address,
+                address = currentAddress,
                 type = report.type,
                 assignStatus = report.assignStatus,
                 priority = report.priority,
@@ -168,28 +182,45 @@ class NewReportViewModel @Inject constructor(
         }
     }
 
+    // ======= HÀM MỚI ĐỂ LẤY ĐỊA CHỈ TỰ ĐỘNG =======
+    private fun fetchAndSetTaskAddress(taskId: String) {
+        if (taskId.isBlank()) return
+
+        viewModelScope.launch {
+            try {
+                val taskResult = taskRepository.getTask(taskId)
+                taskResult.getOrNull()?.let { task ->
+                    val branchResult = branchRepository.getBranches()
+                    branchResult.getOrNull()?.let { branches ->
+                        val branchAddress = branches.find { it.branchId == task.branchId }?.address ?: ""
+                        if (branchAddress.isNotBlank()) {
+                            _uiState.update { it.copy(address = branchAddress) }
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to fetch task address", e)
+            }
+        }
+    }
+
     fun generateDescriptionFromImage(imageUri: Uri) {
         viewModelScope.launch {
             try {
                 val inputImage = InputImage.fromFilePath(context, imageUri)
                 val labeler = ImageLabeling.getClient(ImageLabelerOptions.DEFAULT_OPTIONS)
-
                 labeler.process(inputImage)
                     .addOnSuccessListener { labels ->
-                      val MIN_CONFIDENCE = 0.65f // Đặt ngưỡng tin cậy là 65%
-
-                        // 1. Định nghĩa các từ khóa tình trạng (mở rộng hơn)
+                        val MIN_CONFIDENCE = 0.65f
                         val conditionKeywords = setOf(
                             "rust", "crack", "leak", "broken", "damage", "fire", "smoke",
                             "dent", "scratch", "wear", "tear", "stain", "corrosion", "fracture"
                         )
-
-                        // 2. Lọc các nhãn có độ tin cậy cao VÀ phân loại chúng
                         val objects = mutableListOf<String>()
                         val conditions = mutableListOf<String>()
 
-                        labels.filter { it.confidence >= MIN_CONFIDENCE } // <-- LỌC THEO ĐỘ TIN CẬY
-                            .take(5) // Lấy 5 nhãn TỐT NHẤT
+                        labels.filter { it.confidence >= MIN_CONFIDENCE }
+                            .take(5)
                             .forEach { label ->
                                 if (label.text.lowercase(Locale.ROOT) in conditionKeywords) {
                                     conditions.add(label.text)
@@ -198,7 +229,6 @@ class NewReportViewModel @Inject constructor(
                                 }
                             }
 
-                        // 3. Tạo mô tả thông minh hơn
                         var generatedText = ""
                         if (objects.isNotEmpty()) {
                             generatedText += "Objects identified: ${objects.joinToString(", ")}. "
@@ -207,7 +237,6 @@ class NewReportViewModel @Inject constructor(
                             generatedText += "Possible conditions: ${conditions.joinToString(", ")}."
                         }
 
-                        // Chỉ cập nhật nếu có kết quả hợp lệ
                         if (generatedText.isNotBlank()) {
                             val currentDescription = _uiState.value.description
                             val newDescription = if (currentDescription.isNotBlank()) {
@@ -217,9 +246,8 @@ class NewReportViewModel @Inject constructor(
                             }
                             _uiState.update { it.copy(description = newDescription) }
                         }
-                   }
+                    }
                     .addOnFailureListener { e -> Log.e(TAG, "Image labeling failed", e) }
-
             } catch (e: Exception) {
                 Log.e(TAG, "Error preparing image for ML Kit", e)
             }
