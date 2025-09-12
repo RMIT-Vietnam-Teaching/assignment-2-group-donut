@@ -32,22 +32,28 @@ class ReportRepositoryImpl @Inject constructor(
 
     override suspend fun createReport(report: Report): Result<String> {
         return try {
-            val reportId = UUID.randomUUID().toString()
+            // Sử dụng reportId đã có nếu tồn tại, nếu không thì mới tạo UUID mới
+            val reportId = if (report.reportId.isNotBlank()) {
+                report.reportId
+            } else {
+                UUID.randomUUID().toString()
+            }
+
             val reportWithId = report.copy(
                 reportId = reportId,
-                createdAt = Timestamp.now(),
+                // Giữ lại createdAt từ bản offline nếu có, nếu không thì mới tạo timestamp mới
+                createdAt = report.createdAt ?: Timestamp.now(),
                 syncStatus = SyncStatus.SYNCED
             )
-
             firestore.collection(REPORTS_COLLECTION)
                 .document(reportId)
-                .set(reportWithId)
+                .set(reportWithId) // .set() sẽ tạo mới hoặc ghi đe
                 .await()
 
-            Log.d(TAG, "Report created successfully: $reportId")
+            Log.d(TAG, "Report created/synced successfully: $reportId")
             Result.success(reportId)
         } catch (e: Exception) {
-            Log.e(TAG, "Error creating report", e)
+            Log.e(TAG, "Error creating/syncing report", e)
             Result.failure(e)
         }
     }
