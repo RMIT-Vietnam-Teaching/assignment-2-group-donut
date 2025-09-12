@@ -3,6 +3,22 @@
   <component name="CopilotDiffPersistence">
     <option name="pendingDiffs">
       <map>
+        <entry key="$PROJECT_DIR$/app/src/androidTest/java/com/phuonghai/inspection/SupervisorProfileScreenTest.kt">
+          <value>
+            <PendingDiffInfo>
+              <option name="filePath" value="$PROJECT_DIR$/app/src/androidTest/java/com/phuonghai/inspection/SupervisorProfileScreenTest.kt" />
+              <option name="originalContent" value="package com.phuonghai.inspection&#10;&#10;class SupervisorProfileScreenTest {&#10;}" />
+              <option name="updatedContent" value="package com.phuonghai.inspection&#10;&#10;import androidx.compose.ui.test.junit4.createAndroidComposeRule&#10;import androidx.compose.ui.test.onNodeWithText&#10;import androidx.compose.ui.test.onNodeWithContentDescription&#10;import androidx.compose.ui.test.performClick&#10;import androidx.test.ext.junit.runners.AndroidJUnit4&#10;import com.donut.assignment2.presentation.supervisor.profile.SupervisorProfileScreen&#10;import org.junit.Rule&#10;import org.junit.Test&#10;import org.junit.runner.RunWith&#10;import androidx.navigation.compose.rememberNavController&#10;&#10;@RunWith(AndroidJUnit4::class)&#10;class SupervisorProfileScreenTest {&#10;    @get:Rule&#10;    val composeTestRule = createAndroidComposeRule&lt;MainActivity&gt;()&#10;&#10;    @Test&#10;    fun profileScreen_displaysProfileInfo() {&#10;        composeTestRule.setContent {&#10;            SupervisorProfileScreen(navController = rememberNavController())&#10;        }&#10;        // Check if the title and Logout button are displayed&#10;        composeTestRule.onNodeWithText(&quot;Account&quot;).assertExists()&#10;        composeTestRule.onNodeWithText(&quot;Logout&quot;).assertExists()&#10;    }&#10;&#10;    @Test&#10;    fun profileScreen_logoutDialogAppearsOnClick() {&#10;        composeTestRule.setContent {&#10;            SupervisorProfileScreen(navController = rememberNavController())&#10;        }&#10;        // Click the Logout button&#10;        composeTestRule.onNodeWithText(&quot;Logout&quot;).performClick()&#10;        // Check if the dialog appears&#10;        composeTestRule.onNodeWithText(&quot;Sign Out&quot;).assertExists()&#10;        composeTestRule.onNodeWithText(&quot;Are you sure you want to sign out?&quot;).assertExists()&#10;        composeTestRule.onNodeWithText(&quot;Cancel&quot;).assertExists()&#10;        composeTestRule.onNodeWithText(&quot;Sign Out&quot;).assertExists()&#10;    }&#10;}" />
+            </PendingDiffInfo>
+          </value>
+        </entry>
+        <entry key="$PROJECT_DIR$/app/src/androidTest/java/com/phuonghai/inspection/presentation/supervisor/profile/SupervisorProfileScreenTest.kt">
+          <value>
+            <PendingDiffInfo>
+              <option name="filePath" value="$PROJECT_DIR$/app/src/androidTest/java/com/phuonghai/inspection/presentation/supervisor/profile/SupervisorProfileScreenTest.kt" />
+            </PendingDiffInfo>
+          </value>
+        </entry>
         <entry key="$PROJECT_DIR$/app/src/main/java/com/phuonghai/inspection/ui/ButtonToastScreen.kt">
           <value>
             <PendingDiffInfo>

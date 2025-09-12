@@ -51,6 +51,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.rememberAsyncImagePainter
 import com.google.firebase.auth.FirebaseAuth
 import com.phuonghai.inspection.R
+import com.phuonghai.inspection.domain.repository.SupervisorProfileViewModelContract
 import com.phuonghai.inspection.presentation.generalUI.ButtonUI
 import com.phuonghai.inspection.presentation.navigation.Screen
 import com.phuonghai.inspection.presentation.supervisor.profile.SupervisorProfileViewModel
@@ -58,11 +59,11 @@ import com.phuonghai.inspection.presentation.supervisor.profile.SupervisorProfil
 @Composable
 fun SupervisorProfileScreen(
     modifier: Modifier = Modifier,
-    navController: NavController
+    navController: NavController,
+    viewModel: SupervisorProfileViewModelContract = hiltViewModel<SupervisorProfileViewModel>()
 ) {
     var showLogoutDialog by remember { mutableStateOf(false) }
 
-    val viewModel: SupervisorProfileViewModel = hiltViewModel()
     val userState by viewModel.user.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val signOutSuccess by viewModel.signOutSuccess.collectAsState()  // ✅ NEW
