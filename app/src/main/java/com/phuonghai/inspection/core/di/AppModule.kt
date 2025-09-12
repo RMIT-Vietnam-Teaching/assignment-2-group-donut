@@ -262,20 +262,6 @@ object AppModule {
         return UpdateTaskStatusUseCase(taskRepository)
     }
 
-    // 🆕 Updated History ViewModel
-    @Provides
-    @Singleton
-    fun provideInspectorHistoryViewModel(
-        getFirebaseReportsByInspectorUseCase: GetFirebaseReportsByInspectorUseCase,
-        localReportDao: LocalReportDao,
-        networkMonitor: NetworkMonitor
-    ): InspectorHistoryViewModel {
-        return InspectorHistoryViewModel(
-            getFirebaseReportsByInspectorUseCase,
-            localReportDao,
-            networkMonitor
-        )
-    }
     @Provides
     @Singleton
     fun provideGetTodayTasksUseCase(

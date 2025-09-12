@@ -209,9 +209,7 @@ fun InspectorTaskScreen(
                 else -> {
                     // Task list
                     LazyColumn(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(bottom = 110.dp),
+                        modifier = Modifier.fillMaxSize(), // <-- ĐÃ XÓA PADDING Ở ĐÂY
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         items(filteredTasks) { taskWithDetails ->
@@ -233,6 +231,11 @@ fun InspectorTaskScreen(
                                 hasDraft = taskWithDetails.hasDraft
                             )
                         }
+
+                        // ======= THÊM KHOẢNG TRỐNG Ở ĐÂY =======
+                        item {
+                            Spacer(modifier = Modifier.height(80.dp))
+                        }
                     }
                 }
             }
@@ -240,7 +243,10 @@ fun InspectorTaskScreen(
     }
 }
 
-// Task-specific Sync Status Card
+
+// ... (Tất cả các Composable con khác như TaskSyncStatusCard, TaskCard, v.v. giữ nguyên không đổi)
+
+
 @Composable
 fun TaskSyncStatusCard(
     syncState: TaskSyncUiState,
@@ -820,14 +826,13 @@ fun TaskCard(
                                     }
                                 }
                                 TaskStatus.IN_PROGRESS -> {
-                                    // ======= ĐOẠN MÃ ĐÃ SỬA LỖI =======
                                     OutlinedButton(
                                         onClick = { /* Do nothing */ },
                                         enabled = false,
                                         modifier = Modifier.height(32.dp),
-                                        border = BorderStroke(1.dp, StatusOrange.copy(alpha = 0.5f)), // Sửa ở đây
+                                        border = BorderStroke(1.dp, StatusOrange.copy(alpha = 0.5f)),
                                         colors = ButtonDefaults.outlinedButtonColors(
-                                            disabledContentColor = StatusOrange // Chỉ dùng tham số hợp lệ
+                                            disabledContentColor = StatusOrange
                                         )
                                     ) {
                                         Text("In Progress", fontSize = 12.sp, fontWeight = FontWeight.Bold)

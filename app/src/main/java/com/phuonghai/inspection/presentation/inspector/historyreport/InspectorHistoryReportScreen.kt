@@ -42,10 +42,6 @@ import java.util.*
 fun InspectorHistoryReportScreen(navController: NavController) {
     val viewModel: InspectorHistoryViewModel = hiltViewModel()
     val reports by viewModel.reports.collectAsState()
-    val isLoading by viewModel.isLoading.collectAsState()
-    val isOnline by viewModel.isOnline.collectAsState()
-    val syncStatus by viewModel.syncStatus.collectAsState()
-    val errorMessage by viewModel.errorMessage.collectAsState()
 
     Scaffold(
         topBar = {
@@ -64,12 +60,15 @@ fun InspectorHistoryReportScreen(navController: NavController) {
                 InspectorHistoryReportCard(
                     report = report,
                     onClick = {
-                        // Điều hướng đến màn hình chi tiết khi nhấn vào card
                         navController.navigate(Screen.InspectorReportDetailScreen.createRoute(report.reportId))
                     }
                 )
             }
+            item {
+                Spacer(modifier = Modifier.height(80.dp))
+            }
         }
+
     }
 }
 
@@ -87,7 +86,7 @@ fun InspectorHistoryReportCard(report: Report, onClick: () -> Unit) {
     ) {
         Column(
             modifier = Modifier
-                .padding(16.dp) // Tăng padding tổng thể để có không gian
+                .padding(16.dp)
         ) {
             // Tiêu đề báo cáo
             Text(
@@ -106,12 +105,11 @@ fun InspectorHistoryReportCard(report: Report, onClick: () -> Unit) {
                 fontSize = 14.sp,
                 color = Color.Gray
             )
-            Spacer(modifier = Modifier.height(12.dp)) // Khoảng cách lớn hơn
+            Spacer(modifier = Modifier.height(12.dp))
 
-            // Hàng chứa Status và Review Status
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween, // Căn đều 2 đầu
+                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 // Status của Report (assignStatus)
@@ -192,5 +190,7 @@ fun InspectorHistoryReportCard(report: Report, onClick: () -> Unit) {
                 }
             }
         }
+
     }
+
 }
