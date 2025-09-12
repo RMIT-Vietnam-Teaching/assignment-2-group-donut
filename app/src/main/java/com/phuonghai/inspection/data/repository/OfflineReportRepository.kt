@@ -24,6 +24,8 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import android.content.Context
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.flow.channelFlow
+import kotlinx.coroutines.launch
 
 @Singleton
 class OfflineReportRepository @Inject constructor(
@@ -58,7 +60,8 @@ class OfflineReportRepository @Inject constructor(
                         syncStatus = SyncStatus.SYNCED
                     )
                     localReportDao.insertReport(localReport.toLocalEntity())
-                    val unsyncedCount = localReportDao.getUnsyncedReportsCountForInspector(localReport.inspectorId)
+                    val unsyncedCount =
+                        localReportDao.getUnsyncedReportsCountForInspector(localReport.inspectorId)
                     localReportDao.trimReports(localReport.inspectorId, 30 + unsyncedCount)
                 }
 
@@ -66,7 +69,8 @@ class OfflineReportRepository @Inject constructor(
             } else {
                 // Offline or Draft: Save locally
                 Log.d(TAG, "Saving report offline: ${report.title}")
-                val reportId = if (report.reportId.isBlank()) UUID.randomUUID().toString() else report.reportId
+                val reportId =
+                    if (report.reportId.isBlank()) UUID.randomUUID().toString() else report.reportId
                 val reportWithId = report.copy(
                     reportId = reportId,
                     createdAt = report.createdAt ?: Timestamp.now(),
@@ -76,7 +80,8 @@ class OfflineReportRepository @Inject constructor(
                 // Save to local database
                 val localEntity = reportWithId.toLocalEntity()
                 localReportDao.insertReport(localEntity)
-                val unsyncedCount = localReportDao.getUnsyncedReportsCountForInspector(reportWithId.inspectorId)
+                val unsyncedCount =
+                    localReportDao.getUnsyncedReportsCountForInspector(reportWithId.inspectorId)
                 localReportDao.trimReports(reportWithId.inspectorId, 30 + unsyncedCount)
 
                 // Schedule sync if not connected and not a draft
@@ -266,7 +271,8 @@ class OfflineReportRepository @Inject constructor(
         videoUri: Uri?
     ): Result<String> {
         return try {
-            val reportId = if (report.reportId.isBlank()) UUID.randomUUID().toString() else report.reportId
+            val reportId =
+                if (report.reportId.isBlank()) UUID.randomUUID().toString() else report.reportId
             val isConnected = networkMonitor.isConnected.first()
 
             var localImagePath = ""
@@ -323,7 +329,8 @@ class OfflineReportRepository @Inject constructor(
                 )
 
                 localReportDao.insertReport(localEntity)
-                val unsyncedCount = localReportDao.getUnsyncedReportsCountForInspector(reportWithMedia.inspectorId)
+                val unsyncedCount =
+                    localReportDao.getUnsyncedReportsCountForInspector(reportWithMedia.inspectorId)
                 localReportDao.trimReports(reportWithMedia.inspectorId, 30 + unsyncedCount)
 
                 // Schedule sync if not a draft
@@ -353,32 +360,36 @@ class OfflineReportRepository @Inject constructor(
     }
 
     override fun getReportsByInspectorId(inspectorId: String): Flow<List<Report>> {
-        return flow {
-            val localReports = localReportDao.getReportsByInspectorId(inspectorId).first()
+        return channelFlow {
+            launch {
+                if (networkMonitor.isConnected.first()) {
+                    try {
+                        Log.d(TAG, "Background sync started for getReportsByInspectorId")
+                        val remoteReports =
+                            onlineReportRepository.getReportsByInspectorId(inspectorId).first()
 
-            if (networkMonitor.isConnected.first()) {
-                val unsyncedIds = localReports.filter { it.needsSync }.map { it.reportId }.toSet()
-                val remoteReports = onlineReportRepository.getReportsByInspectorId(inspectorId).first()
-
-                remoteReports.forEach { report ->
-                    val localReport = localReportDao.getReportById(report.reportId)
-                    if (localReport?.needsSync == true) {
-                        // Skip overwriting local report with unsynced changes
-                        return@forEach
+                        remoteReports.forEach { report ->
+                            val localReport = localReportDao.getReportById(report.reportId)
+                            if (localReport?.needsSync != true) {
+                                val entity =
+                                    report.copy(syncStatus = SyncStatus.SYNCED).toLocalEntity()
+                                localReportDao.insertReport(entity)
+                            }
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Background sync for reports failed", e)
                     }
-
-                    val entity = report.copy(syncStatus = SyncStatus.SYNCED)
-                        .toLocalEntity()
-                    localReportDao.insertReport(entity)
                 }
-                val unsyncedCount = localReportDao.getUnsyncedReportsCountForInspector(inspectorId)
-                localReportDao.trimReports(inspectorId, 30 + unsyncedCount)
             }
 
-            emitAll(
-                localReportDao.getReportsByInspectorId(inspectorId)
-                    .map { entities -> entities.map { it.toDomainModel() } }
-            )
+            localReportDao.getReportsByInspectorId(inspectorId)
+                .map { entities ->
+                    // Sắp xếp theo ngày tạo mới nhất
+                    entities.map { it.toDomainModel() }.sortedByDescending { it.createdAt }
+                }
+                .collect { reports ->
+                    send(reports) // Gửi danh sách mới nhất đến UI mỗi khi có thay đổi
+                }
         }
     }
 }

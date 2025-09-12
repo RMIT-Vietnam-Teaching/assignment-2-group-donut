@@ -31,6 +31,7 @@ import com.phuonghai.inspection.presentation.theme.*
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun InspectorDashboardScreen(
@@ -39,6 +40,7 @@ fun InspectorDashboardScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val isOnline by viewModel.isOnline.collectAsStateWithLifecycle()
+
     LaunchedEffect(Unit) {
         viewModel.loadDashboardData()
     }
@@ -49,10 +51,8 @@ fun InspectorDashboardScreen(
             TopAppBar(
                 title = {
                     Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)
-                    ){
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         Text(
                             "Dashboard",
                             color = MaterialTheme.colorScheme.onSurface,
@@ -60,14 +60,16 @@ fun InspectorDashboardScreen(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         TaskNetworkStatusIndicator(isOnline = isOnline)
-                        ButtonUI(
-                            text = "Chat",
-                            onClick = {
-                                navController.navigate(Screen.InspectorChatDetailScreen.route)
-                            },
-                            modifier = Modifier.clip(RoundedCornerShape(50.dp))
-                        )
                     }
+                },
+                actions = {
+                    ButtonUI(
+                        text = "Chat",
+                        onClick = {
+                            navController.navigate(Screen.InspectorChatDetailScreen.route)
+                        },
+                        modifier = Modifier.clip(RoundedCornerShape(50.dp))
+                    )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface
@@ -90,27 +92,21 @@ fun InspectorDashboardScreen(
                         CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
                     }
                 }
-
                 uiState.showError -> {
                     DashboardErrorContent(
                         message = uiState.errorMessage ?: "Đã có lỗi xảy ra",
                         onRetry = { viewModel.refreshDashboard() }
                     )
                 }
-
                 uiState.showContent -> {
                     LazyColumn(
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                            .padding(horizontal = 16.dp), // Chỉ padding ngang
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                        contentPadding = PaddingValues(top = 16.dp) // Padding top cho toàn bộ list
                     ) {
-                        // Welcome Header
-                        item {
-                            WelcomeHeader(user = uiState.currentUser)
-                        }
-
-                        // Statistics Overview
+                        item { WelcomeHeader(user = uiState.currentUser) }
                         item {
                             StatisticsOverview(
                                 pendingReports = uiState.pendingReports.size,
@@ -119,8 +115,6 @@ fun InspectorDashboardScreen(
                                 completedTasks = uiState.statistics?.approvedReports ?: 0
                             )
                         }
-
-                        // Pending Reports Section
                         item {
                             SectionHeader(
                                 title = "Báo cáo chờ duyệt",
@@ -129,7 +123,6 @@ fun InspectorDashboardScreen(
                                 color = StatusOrange
                             )
                         }
-
                         if (uiState.pendingReports.isEmpty()) {
                             item {
                                 EmptyStateCard(
@@ -142,16 +135,11 @@ fun InspectorDashboardScreen(
                                 PendingReportCard(
                                     report = report,
                                     onClick = {
-                                        // Điều hướng đến màn hình chi tiết báo cáo của inspector
-                                        navController.navigate(
-                                            Screen.InspectorReportDetailScreen.createRoute(report.id)
-                                        )
+                                        navController.navigate(Screen.InspectorReportDetailScreen.createRoute(report.id))
                                     }
                                 )
                             }
                         }
-
-                        // Today Tasks Section
                         item {
                             SectionHeader(
                                 title = "Nhiệm vụ hôm nay",
@@ -160,7 +148,6 @@ fun InspectorDashboardScreen(
                                 color = StatusBlue
                             )
                         }
-
                         if (uiState.todayTasks.isEmpty()) {
                             item {
                                 EmptyStateCard(
@@ -172,37 +159,18 @@ fun InspectorDashboardScreen(
                             items(uiState.todayTasks) { task ->
                                 TaskCard(
                                     task = task,
-                                    onClick = {
-                                        // Navigate to task detail or create report
-                                        navController.navigate("task_detail/${task.taskId}")
-                                    }
+                                    onClick = { navController.navigate("task_detail/${task.taskId}") }
                                 )
                             }
                         }
-
-                        // Quick Actions
+                        // 2. Thêm một khoảng trống ở cuối
                         item {
-                            QuickActions(
-                                onCreateReport = {
-                                    navController.navigate(Screen.InspectorNewReportScreen.route)
-                                },
-                                onViewAllTasks = {
-                                    navController.navigate(Screen.InspectorTaskScreen.route)
-                                },
-                                onViewHistory = {
-                                    navController.navigate(Screen.InspectorHistoryScreen.route)
-                                }
-                            )
+                            Spacer(modifier = Modifier.height(80.dp))
                         }
                     }
                 }
-
                 else -> {
-                    // Initial state or empty state
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
                     }
                 }
@@ -210,6 +178,7 @@ fun InspectorDashboardScreen(
         }
     }
 }
+
 
 @Composable
 private fun WelcomeHeader(user: User?) {
@@ -243,13 +212,11 @@ private fun WelcomeHeader(user: User?) {
                     color = MaterialTheme.colorScheme.onSurface
                 )
             }
-
             Text(
                 text = "ID: INSP-${user?.uId?.take(6)?.uppercase() ?: "000000"}",
                 fontSize = 14.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-
             Text(
                 text = "Hôm nay là ${SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date())}",
                 fontSize = 14.sp,
@@ -284,95 +251,40 @@ private fun StatisticsOverview(
                 color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.padding(bottom = 16.dp)
             )
-
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                StatCard(
-                    number = pendingReports,
-                    label = "Chờ duyệt",
-                    color = StatusOrange,
-                    icon = Icons.Default.PendingActions
-                )
-
-                StatCard(
-                    number = todayTasks,
-                    label = "Task hôm nay",
-                    color = StatusBlue,
-                    icon = Icons.Default.Today
-                )
-
-                StatCard(
-                    number = totalReports,
-                    label = "Tổng báo cáo",
-                    color = MaterialTheme.colorScheme.primary,
-                    icon = Icons.Default.Assignment
-                )
-
-                StatCard(
-                    number = completedTasks,
-                    label = "Đã hoàn thành",
-                    color = StatusGreen,
-                    icon = Icons.Default.CheckCircle
-                )
+                StatCard(number = pendingReports, label = "Chờ duyệt", color = StatusOrange, icon = Icons.Default.PendingActions)
+                StatCard(number = todayTasks, label = "Task hôm nay", color = StatusBlue, icon = Icons.Default.Today)
+                StatCard(number = totalReports, label = "Tổng báo cáo", color = MaterialTheme.colorScheme.primary, icon = Icons.Default.Assignment)
+                StatCard(number = completedTasks, label = "Đã hoàn thành", color = StatusGreen, icon = Icons.Default.CheckCircle)
             }
         }
     }
 }
 
 @Composable
-private fun StatCard(
-    number: Int,
-    label: String,
-    color: Color,
-    icon: ImageVector
-) {
+private fun StatCard(number: Int, label: String, color: Color, icon: ImageVector) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = label,
-            tint = color,
-            modifier = Modifier.size(24.dp)
-        )
-
-        Text(
-            text = number.toString(),
-            fontSize = 24.sp,
-            fontWeight = FontWeight.Bold,
-            color = color
-        )
-
-        Text(
-            text = label,
-            fontSize = 12.sp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center
-        )
+        Icon(imageVector = icon, contentDescription = label, tint = color, modifier = Modifier.size(24.dp))
+        Text(text = number.toString(), fontSize = 24.sp, fontWeight = FontWeight.Bold, color = color)
+        Text(text = label, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
     }
 }
 
 @Composable
-private fun SectionHeader(
-    title: String,
-    count: Int,
-    icon: ImageVector,
-    color: Color
-) {
+private fun SectionHeader(title: String, count: Int, icon: ImageVector, color: Color) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = color.copy(alpha = 0.1f)
-        ),
+        colors = CardDefaults.cardColors(containerColor = color.copy(alpha = 0.1f)),
         shape = RoundedCornerShape(12.dp)
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
@@ -380,26 +292,10 @@ private fun SectionHeader(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = title,
-                    tint = color,
-                    modifier = Modifier.size(24.dp)
-                )
-
-                Text(
-                    text = title,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
+                Icon(imageVector = icon, contentDescription = title, tint = color, modifier = Modifier.size(24.dp))
+                Text(text = title, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
             }
-
-            Surface(
-                color = color,
-                shape = RoundedCornerShape(50),
-                tonalElevation = 2.dp
-            ) {
+            Surface(color = color, shape = RoundedCornerShape(50), tonalElevation = 2.dp) {
                 Text(
                     text = count.toString(),
                     fontSize = 14.sp,
@@ -413,31 +309,19 @@ private fun SectionHeader(
 }
 
 @Composable
-private fun PendingReportCard(
-    report: ReportItem,
-    onClick: () -> Unit
-) {
+private fun PendingReportCard(report: ReportItem, onClick: () -> Unit) {
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onClick() },
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
+        modifier = Modifier.fillMaxWidth().clickable { onClick() },
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         shape = RoundedCornerShape(12.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(
                     text = report.title,
                     fontSize = 16.sp,
@@ -446,18 +330,13 @@ private fun PendingReportCard(
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
-
                 Text(
                     text = "Gửi lúc: ${report.createdAt}",
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-
-            Column(
-                horizontalAlignment = Alignment.End,
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
+            Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Surface(
                     color = StatusOrange.copy(alpha = 0.2f),
                     shape = RoundedCornerShape(50),
@@ -471,7 +350,6 @@ private fun PendingReportCard(
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                     )
                 }
-
                 Icon(
                     imageVector = Icons.Default.ArrowForward,
                     contentDescription = "View details",
@@ -484,31 +362,19 @@ private fun PendingReportCard(
 }
 
 @Composable
-private fun TaskCard(
-    task: TaskItem,
-    onClick: () -> Unit
-) {
+private fun TaskCard(task: TaskItem, onClick: () -> Unit) {
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onClick() },
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
+        modifier = Modifier.fillMaxWidth().clickable { onClick() },
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         shape = RoundedCornerShape(12.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(
                     text = task.title,
                     fontSize = 16.sp,
@@ -517,7 +383,6 @@ private fun TaskCard(
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
-
                 Text(
                     text = task.description,
                     fontSize = 12.sp,
@@ -525,18 +390,13 @@ private fun TaskCard(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-
                 Text(
                     text = "Hạn: ${task.dueTime}",
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-
-            Column(
-                horizontalAlignment = Alignment.End,
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
+            Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Surface(
                     color = when (task.priority) {
                         "HIGH" -> SafetyRed.copy(alpha = 0.2f)
@@ -562,7 +422,6 @@ private fun TaskCard(
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                     )
                 }
-
                 Icon(
                     imageVector = Icons.Default.ArrowForward,
                     contentDescription = "View task",
@@ -575,187 +434,58 @@ private fun TaskCard(
 }
 
 @Composable
-private fun EmptyStateCard(
-    message: String,
-    icon: ImageVector
-) {
+private fun EmptyStateCard(message: String, icon: ImageVector) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-        ),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
         shape = RoundedCornerShape(12.dp)
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(32.dp),
+            modifier = Modifier.fillMaxWidth().padding(32.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = message,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(48.dp)
-            )
-
-            Text(
-                text = message,
-                fontSize = 14.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center
-            )
+            Icon(imageVector = icon, contentDescription = message, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(48.dp))
+            Text(text = message, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
         }
     }
 }
 
 @Composable
-private fun QuickActions(
-    onCreateReport: () -> Unit,
-    onViewAllTasks: () -> Unit,
-    onViewHistory: () -> Unit
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Text(
-                text = "Thao tác nhanh",
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                QuickActionButton(
-                    icon = Icons.Default.Add,
-                    label = "Tạo báo cáo",
-                    onClick = onCreateReport
-                )
-
-                QuickActionButton(
-                    icon = Icons.Default.Assignment,
-                    label = "Xem tất cả task",
-                    onClick = onViewAllTasks
-                )
-
-                QuickActionButton(
-                    icon = Icons.Default.History,
-                    label = "Lịch sử",
-                    onClick = onViewHistory
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun QuickActionButton(
-    icon: ImageVector,
-    label: String,
-    onClick: () -> Unit
-) {
+private fun DashboardErrorContent(message: String, onRetry: () -> Unit) {
     Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = Modifier.clickable { onClick() }
-    ) {
-        Surface(
-            color = MaterialTheme.colorScheme.primary,
-            shape = RoundedCornerShape(12.dp),
-            tonalElevation = 4.dp,
-            modifier = Modifier.size(48.dp)
-        ) {
-            Box(
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = label,
-                    tint = Color.White,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-        }
-
-        Text(
-            text = label,
-            fontSize = 12.sp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-            maxLines = 2
-        )
-    }
-}
-
-@Composable
-private fun DashboardErrorContent(
-    message: String,
-    onRetry: () -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(32.dp),
+        modifier = Modifier.fillMaxSize().padding(32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Icon(
-            imageVector = Icons.Default.Error,
-            contentDescription = "Error",
-            tint = SafetyRed,
-            modifier = Modifier.size(64.dp)
-        )
-
+        Icon(imageVector = Icons.Default.Error, contentDescription = "Error", tint = SafetyRed, modifier = Modifier.size(64.dp))
         Spacer(modifier = Modifier.height(16.dp))
-
-        Text(
-            text = message,
-            fontSize = 16.sp,
-            color = MaterialTheme.colorScheme.onSurface,
-            textAlign = TextAlign.Center
-        )
-
+        Text(text = message, fontSize = 16.sp, color = MaterialTheme.colorScheme.onSurface, textAlign = TextAlign.Center)
         Spacer(modifier = Modifier.height(16.dp))
-
-        ButtonUI(
-            text = "Thử lại",
-            onClick = onRetry
-        )
+        ButtonUI(text = "Thử lại", onClick = onRetry)
     }
-    @Composable
-    fun TaskNetworkStatusIndicator(
-        isOnline: Boolean,
-        modifier: Modifier = Modifier
+}
+
+@Composable
+fun TaskNetworkStatusIndicator(
+    isOnline: Boolean,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = modifier
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = modifier
-        ) {
-            Icon(
-                imageVector = if (isOnline) Icons.Default.Cloud else Icons.Default.CloudOff,
-                contentDescription = if (isOnline) "Online" else "Offline",
-                tint = if (isOnline) Color(0xFF4CAF50) else Color(0xFFFF9800),
-                modifier = Modifier.size(16.dp)
-            )
-            Spacer(modifier = Modifier.width(4.dp))
-            Text(
-                text = if (isOnline) "Online" else "Offline",
-                style = MaterialTheme.typography.labelSmall,
-                color = if (isOnline) Color(0xFF4CAF50) else Color(0xFFFF9800)
-            )
-        }
+        Icon(
+            imageVector = if (isOnline) Icons.Default.Cloud else Icons.Default.CloudOff,
+            contentDescription = if (isOnline) "Online" else "Offline",
+            tint = if (isOnline) Color(0xFF4CAF50) else Color(0xFFFF9800),
+            modifier = Modifier.size(16.dp)
+        )
+        Spacer(modifier = Modifier.width(4.dp))
+        Text(
+            text = if (isOnline) "Online" else "Offline",
+            style = MaterialTheme.typography.labelSmall,
+            color = if (isOnline) Color(0xFF4CAF50) else Color(0xFFFF9800)
+        )
     }
 }

@@ -132,6 +132,7 @@ private fun ReportDetails(uiState: ReportDetailUiState) {
         Divider()
         DetailRow("Description", report.description)
         DetailRow("Score", report.score?.toString() ?: "N/A")
+        Spacer(modifier = Modifier.height(40.dp))
     }
 }
 
