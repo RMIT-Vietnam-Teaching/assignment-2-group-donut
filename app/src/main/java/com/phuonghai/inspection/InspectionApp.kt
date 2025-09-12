@@ -3,6 +3,7 @@ package com.phuonghai.inspection
 import android.app.Application
 import android.content.Intent
 import android.util.Log
+import androidx.core.content.ContextCompat
 import androidx.work.Configuration
 import androidx.work.WorkManager
 import com.phuonghai.inspection.core.network.NetworkConnectionListener
@@ -76,7 +77,9 @@ class InspectionApp : Application() {
         if (networkListenerStarted) return
 
         val intent = Intent(this, NetworkConnectionListener::class.java)
-        startService(intent)
+        // Use ContextCompat.startForegroundService to avoid crashes when starting
+        // a foreground service while the app is in the background
+        ContextCompat.startForegroundService(this, intent)
         networkListenerStarted = true
         Log.d(TAG, "NetworkConnectionListener service started")
     }

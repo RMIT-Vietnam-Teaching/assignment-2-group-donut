@@ -9,9 +9,11 @@ import com.google.firebase.firestore.Query
 import com.google.firebase.storage.storage
 import com.phuonghai.inspection.domain.model.AssignStatus
 import com.phuonghai.inspection.domain.model.Report
+import com.phuonghai.inspection.domain.model.ResponseStatus
 import com.phuonghai.inspection.domain.model.SyncStatus
 import com.phuonghai.inspection.domain.repository.IReportRepository
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.tasks.await
 import java.util.UUID
@@ -190,6 +192,38 @@ class ReportRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun getPendingReportsBySupervisorId(supervisorId: String): Result<List<Report>> {
+        return try {
+            val tasksSnapshot = firestore.collection("tasks")
+                .whereEqualTo("supervisorId", supervisorId)
+                .get()
+                .await()
+
+            val taskIds = tasksSnapshot.documents.mapNotNull { it.getString("taskId") }
+            if (taskIds.isEmpty()) {
+                return Result.success(emptyList())
+            }
+
+            val reports = mutableListOf<Report>()
+            for (taskId in taskIds) {
+                val reportsSnapshot = firestore.collection(REPORTS_COLLECTION)
+                    .whereEqualTo("taskId", taskId)
+                    .whereEqualTo("responseStatus", ResponseStatus.PENDING.name)
+                    .get()
+                    .await()
+
+                val reportsForTask = reportsSnapshot.toObjects(Report::class.java)
+                    .filter { it.assignStatus.name != "DRAFT" }
+                reports.addAll(reportsForTask)
+            }
+            Log.d(TAG, "Retrieved ${reports.size} pending reports for supervisor: $supervisorId")
+            Result.success(reports)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error getting pending reports for supervisor: $supervisorId", e)
+            Result.failure(e)
+        }
+    }
+
     override suspend fun updateStatus(reportId: String, status: String): Result<Unit> {
         return try {
             firestore.collection(REPORTS_COLLECTION)
@@ -206,18 +240,16 @@ class ReportRepositoryImpl @Inject constructor(
     }
 
     override fun getReportsByInspectorId(inspectorId: String): Flow<List<Report>> = flow {
-        try {
-            val snapshot = firestore.collection(REPORTS_COLLECTION)
-                .whereEqualTo("inspectorId", inspectorId)
-                .orderBy("createdAt", Query.Direction.DESCENDING)
-                .limit(30)
-                .get()
-                .await()
-            emit(snapshot.toObjects(Report::class.java))
-        } catch (e: Exception) {
-            Log.e(TAG, "Error getting reports for inspector", e)
-            emit(emptyList())
-        }
+        // Chỉ thực hiện logic chính ở đây
+        val snapshot = firestore.collection(REPORTS_COLLECTION)
+            .whereEqualTo("inspectorId", inspectorId)
+            .orderBy("createdAt", Query.Direction.DESCENDING)
+            .get()
+            .await()
+        emit(snapshot.toObjects(Report::class.java))
+    }.catch { e -> // <-- Sử dụng toán tử .catch để xử lý lỗi
+        Log.e(TAG, "Error getting reports for inspector", e)
+        emit(emptyList())
     }
 
 

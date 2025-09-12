@@ -25,9 +25,11 @@ import com.phuonghai.inspection.presentation.home.inspector.InspectorNewReportSc
 import com.phuonghai.inspection.presentation.home.inspector.InspectorNotificationScreen
 import com.phuonghai.inspection.presentation.home.inspector.InspectorProfileScreen
 import com.phuonghai.inspection.presentation.inspector.chatbox.InspectorChatDetailScreen
+import com.phuonghai.inspection.presentation.inspector.report.InspectorReportDetailScreen
 import com.phuonghai.inspection.presentation.inspector.task.InspectorTaskScreen
 
 import com.phuonghai.inspection.presentation.navigation.Screen
+import com.phuonghai.inspection.presentation.supervisor.report.SupervisorReportDetailScreen
 
 enum class InspectorDestination(
     val route: String,
@@ -90,7 +92,12 @@ fun InspectorNavHost(
         composable(route = Screen.InspectorChatDetailScreen.route) {
             InspectorChatDetailScreen(navController = navController)
         }
-
+        composable(
+            route = Screen.InspectorReportDetailScreen.route,
+            arguments = listOf(navArgument("reportId") { type = NavType.StringType })
+        ) {
+            InspectorReportDetailScreen(navController = navController)
+        }
     }
 }
 

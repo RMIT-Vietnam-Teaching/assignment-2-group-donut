@@ -7,7 +7,7 @@ import com.phuonghai.inspection.core.network.NetworkMonitor
 import com.phuonghai.inspection.data.local.dao.LocalReportDao
 import com.phuonghai.inspection.data.local.entity.toDomainModel
 import com.phuonghai.inspection.domain.model.Report
-import com.phuonghai.inspection.domain.repository.IReportRepository
+import com.phuonghai.inspection.domain.usecase.GetFirebaseReportsByInspectorUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -16,7 +16,7 @@ import android.util.Log
 
 @HiltViewModel
 class InspectorHistoryViewModel @Inject constructor(
-    private val reportRepository: IReportRepository,
+    private val getFirebaseReportsByInspectorUseCase: GetFirebaseReportsByInspectorUseCase,
     private val localReportDao: LocalReportDao,
     private val networkMonitor: NetworkMonitor
 ) : ViewModel() {
@@ -121,7 +121,7 @@ class InspectorHistoryViewModel @Inject constructor(
             Log.d(TAG, "Syncing with Firebase")
 
             // Sử dụng flow để observe Firebase data
-            reportRepository.getReportsByInspectorId(currentUserId).collect { firebaseReports ->
+            getFirebaseReportsByInspectorUseCase(currentUserId).collect { firebaseReports ->
                 Log.d(TAG, "Received ${firebaseReports.size} reports from Firebase")
 
                 // Merge Firebase data với local data
@@ -141,45 +141,29 @@ class InspectorHistoryViewModel @Inject constructor(
 
     private fun mergeWithCurrentReports(newReports: List<Report>, isFromLocal: Boolean) {
         try {
-            val currentReports = _reports.value.toMutableList()
-            val mergedReports = mutableSetOf<Report>()
+            val map = mutableMapOf<String, Report>()
 
-            // Add existing reports
-            mergedReports.addAll(currentReports)
-
-            // Merge new reports (deduplicate by reportId)
-            newReports.forEach { newReport ->
-                val existingIndex = mergedReports.indexOfFirst { it.reportId == newReport.reportId }
-
-                if (existingIndex >= 0) {
-                    // Report exists - decide which version to keep
-                    val existingReport = mergedReports.elementAt(existingIndex)
-                    val reportToKeep = chooseBetterReport(existingReport, newReport, isFromLocal)
-
-                    mergedReports.remove(existingReport)
-                    mergedReports.add(reportToKeep)
-                } else {
-                    // New report - add it
-                    mergedReports.add(newReport)
-                }
+            _reports.value.forEach { report ->
+                map[report.reportId] = report
             }
 
-            // Sort by creation date (newest first)
-            val sortedReports = mergedReports.sortedByDescending {
-                it.createdAt?.seconds ?: 0L
+            newReports.forEach { report ->
+                map[report.reportId] = chooseBetterReport(map[report.reportId], report, isFromLocal)
             }
 
-            _reports.value = sortedReports
-            Log.d(TAG, "Merged reports - total: ${sortedReports.size}")
+            _reports.value = map.values.sortedByDescending { it.createdAt?.seconds ?: 0L }
+            Log.d(TAG, "Merged reports - total: ${_reports.value.size}")
 
         } catch (e: Exception) {
             Log.e(TAG, "Error merging reports", e)
         }
     }
 
-    private fun chooseBetterReport(existing: Report, new: Report, newIsFromLocal: Boolean): Report {
+    private fun chooseBetterReport(existing: Report?, new: Report, newIsFromLocal: Boolean): Report {
         // Ưu tiên Firebase data nếu cả hai đều có
         // Nhưng nếu local có sync status là UNSYNCED thì giữ local
+
+        val current = existing ?: return new
 
         return if (newIsFromLocal) {
             // Nếu data mới từ local và có sync status UNSYNCED, ưu tiên local
@@ -188,13 +172,13 @@ class InspectorHistoryViewModel @Inject constructor(
                 new
             } else {
                 // Nếu local đã sync, ưu tiên Firebase (existing)
-                existing
+                current
             }
         } else {
             // Data mới từ Firebase - luôn ưu tiên Firebase trừ khi local chưa sync
-            if (existing.syncStatus?.name == "UNSYNCED" || existing.syncStatus?.name == "PENDING") {
-                Log.d(TAG, "Keeping local unsynced report over Firebase: ${existing.reportId}")
-                existing
+            if (current.syncStatus?.name == "UNSYNCED" || current.syncStatus?.name == "PENDING") {
+                Log.d(TAG, "Keeping local unsynced report over Firebase: ${current.reportId}")
+                current
             } else {
                 Log.d(TAG, "Using Firebase report: ${new.reportId}")
                 new

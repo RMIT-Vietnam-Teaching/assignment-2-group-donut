@@ -135,8 +135,11 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.7")
     implementation("androidx.lifecycle:lifecycle-livedata-ktx:2.8.7")
     implementation("androidx.lifecycle:lifecycle-common-java8:2.8.7")
-
+    
     // Export PDF & network util (từ nhánh dev)
     implementation("com.itextpdf:itext7-core:7.2.5")
     implementation("com.squareup.okhttp3:okhttp:4.10.0")
+
+    //ML KIT
+    implementation("com.google.mlkit:image-labeling:17.0.8")
 }

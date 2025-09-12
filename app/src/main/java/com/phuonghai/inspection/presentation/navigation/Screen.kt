@@ -14,6 +14,9 @@ sealed class Screen(val route: String) {
     object InspectorTaskScreen : Screen("inspector_task")
 
     object InspectorHistoryScreen : Screen("inspector_history")
+    object InspectorReportDetailScreen : Screen("inspector_report_detail/{reportId}") {
+        fun createRoute(reportId: String) = "inspector_report_detail/$reportId"
+    }
     object InspectorNewReportScreen : Screen("inspector_reports")
     object InspectorNotificationScreen : Screen("inspector_notification")
     object InspectorProfileScreen : Screen("inspector_profile")
