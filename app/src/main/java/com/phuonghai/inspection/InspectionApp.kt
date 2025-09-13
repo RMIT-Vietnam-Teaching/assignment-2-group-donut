@@ -38,7 +38,9 @@ class InspectionApp : Application() {
         initializeSync()
 
         // Start service monitoring network connectivity
-        startNetworkListener()
+        if (!isRunningInTest()) {
+            startNetworkListener()
+        }
     }
 
     private fun initializeWorkManager() {
@@ -80,5 +82,14 @@ class InspectionApp : Application() {
         ContextCompat.startForegroundService(this, intent)
         networkListenerStarted = true
         Log.d(TAG, "NetworkConnectionListener service started")
+    }
+
+    private fun isRunningInTest(): Boolean {
+        return try {
+            Class.forName("androidx.test.platform.app.InstrumentationRegistry")
+            true
+        } catch (_: Throwable) {
+            false
+        }
     }
 }
