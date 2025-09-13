@@ -71,4 +71,4 @@ This app solves these issues by:
    ```bash
    git clone https://github.com/RMIT-Vietnam-Teaching/assignment-2-group-donut
 
-## My demo video link: [[Demo Video]()](https://youtu.be/N1hbhho7Pu8)
+## My demo video link: https://youtu.be/N1hbhho7Pu8
