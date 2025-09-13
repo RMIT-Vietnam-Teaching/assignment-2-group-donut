@@ -13,6 +13,8 @@ Account:
 - Supervisor Account: Phone: 123456789, OTP: 123456
 - Inspector Account: Phone: 223456789, OTP: 123456
 ---
+link video demo:
+https://youtu.be/N1hbhho7Pu8
 
 ## 💡 Why I Made This App
 Traditional inspection workflows at Phuong Hai company involved **manual note-taking, delayed reporting, and scattered communication**.  
