@@ -8,6 +8,10 @@ An Android mobile application designed to enhance the workflow between **supervi
 The **Field Inspection App** was developed as a group project for my **Mobile Development** course at **RMIT University**.  
 It streamlines inspection reporting by providing inspectors with a mobile-first solution to collect, manage, and share data with supervisors in real time.
 
+
+Account:
+- Supervisor Account: Phone: 123456789, OTP: 123456
+- Inspector Account: Phone: 223456789, OTP: 123456
 ---
 
 ## 💡 Why I Made This App
@@ -39,17 +43,17 @@ This app solves these issues by:
 ---
 
 ## 🚀 Features
-✔️ User authentication with role-based access (Supervisor / Inspector)  
-✔️ Real-time messaging between Supervisor and Inspector  
-✔️ Offline mode with background data synchronization  
-✔️ Machine learning to auto-generate inspection descriptions from uploaded images  
-✔️ Push notifications for new tasks and status updates
-✔️ Inspection form with photo upload & notes  
-✔️ Create inspection reports based on assigned tasks
-✔️ Task assignment and management  
-✔️ Review reports with option to accept or reject submissions  
-✔️ Dashboard to monitor progress across branches  
-✔️ Manage report history and export approved reports as PDF
+- User authentication with role-based access (Supervisor / Inspector)
+- Real-time messaging between Supervisor and Inspector
+- Offline mode with background data synchronization
+- Machine learning to auto-generate inspection descriptions from uploaded images
+- Push notifications for new tasks and status updates 
+- Inspection form with photo upload & notes
+- Create inspection reports based on assigned tasks 
+- Task assignment and management
+- Review reports with option to accept or reject submissions
+- Dashboard to monitor progress across branches
+- Manage report history and export approved reports as PDF
 ---
 
 ## 🛠 Tech Stack
