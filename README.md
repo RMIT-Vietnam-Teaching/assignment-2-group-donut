@@ -54,6 +54,7 @@ This app solves these issues by:
 - Review reports with option to accept or reject submissions
 - Dashboard to monitor progress across branches
 - Manage report history and export approved reports as PDF
+- Compose UI and unit testing 
 ---
 
 ## 🛠 Tech Stack
