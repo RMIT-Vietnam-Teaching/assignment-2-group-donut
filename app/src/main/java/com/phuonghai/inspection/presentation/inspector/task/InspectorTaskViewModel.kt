@@ -17,6 +17,7 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import java.util.Calendar
 import javax.inject.Inject
 
 @HiltViewModel
@@ -215,7 +216,8 @@ class InspectorTaskViewModel @Inject constructor(
                             _uiState.value = _uiState.value.copy(offlineTasksCount = tasks.size)
                         },
                         onFailure = { error ->
-                            _syncState.value = TaskSyncUiState.Error("Sync failed: ${error.message}")
+                            _syncState.value =
+                                TaskSyncUiState.Error("Sync failed: ${error.message}")
                         }
                     )
                 } else {
@@ -266,12 +268,18 @@ class InspectorTaskViewModel @Inject constructor(
                     },
                     onFailure = { error ->
                         Log.e(TAG, "Failed to update task status", error)
-                        _uiState.value = _uiState.value.copy(showError = true, errorMessage = "Failed to update task status: ${error.message}")
+                        _uiState.value = _uiState.value.copy(
+                            showError = true,
+                            errorMessage = "Failed to update task status: ${error.message}"
+                        )
                     }
                 )
             } catch (e: Exception) {
                 Log.e(TAG, "Exception updating task status", e)
-                _uiState.value = _uiState.value.copy(showError = true, errorMessage = "Error updating task status: ${e.message}")
+                _uiState.value = _uiState.value.copy(
+                    showError = true,
+                    errorMessage = "Error updating task status: ${e.message}"
+                )
             }
         }
     }
@@ -280,23 +288,78 @@ class InspectorTaskViewModel @Inject constructor(
         var filtered = allTasks
         val state = _uiState.value
 
+        // Filter by search query
         if (state.searchQuery.isNotBlank()) {
             filtered = filtered.filter {
                 it.task.title.contains(state.searchQuery, true) ||
                         it.task.description.contains(state.searchQuery, true)
             }
         }
+
+        // Filter by priority
         if (state.selectedPriority != "All") {
             filtered = filtered.filter { it.task.priority.name == state.selectedPriority }
         }
+
+        // Filter by status
         if (state.selectedStatus != "All") {
             filtered = filtered.filter { it.task.status.name == state.selectedStatus }
         }
-        // Date filter logic can be added here
+
+        if (state.selectedDateFilter != "All") {
+            val calendar = Calendar.getInstance()
+            val now = calendar.timeInMillis
+
+            filtered = filtered.filter { taskWithDetails ->
+                val dueDate = taskWithDetails.task.dueDate?.toDate()?.time ?: return@filter false
+
+                when (state.selectedDateFilter) {
+                    "Today" -> {
+                        val startOfDay = calendar.apply {
+                            set(Calendar.HOUR_OF_DAY, 0)
+                            set(Calendar.MINUTE, 0)
+                            set(Calendar.SECOND, 0)
+                        }.timeInMillis
+                        val endOfDay = calendar.apply {
+                            set(Calendar.HOUR_OF_DAY, 23)
+                            set(Calendar.MINUTE, 59)
+                            set(Calendar.SECOND, 59)
+                        }.timeInMillis
+                        dueDate in startOfDay..endOfDay
+                    }
+
+                    "This Week" -> {
+                        val startOfWeek = calendar.apply {
+                            set(Calendar.DAY_OF_WEEK, firstDayOfWeek)
+                            set(Calendar.HOUR_OF_DAY, 0)
+                            set(Calendar.MINUTE, 0)
+                            set(Calendar.SECOND, 0)
+                        }.timeInMillis
+                        calendar.add(Calendar.WEEK_OF_YEAR, 1)
+                        val endOfWeek = calendar.timeInMillis
+                        dueDate in startOfWeek until endOfWeek
+                    }
+
+                    "This Month" -> {
+                        val startOfMonth = calendar.apply {
+                            set(Calendar.DAY_OF_MONTH, 1)
+                            set(Calendar.HOUR_OF_DAY, 0)
+                            set(Calendar.MINUTE, 0)
+                            set(Calendar.SECOND, 0)
+                        }.timeInMillis
+                        calendar.add(Calendar.MONTH, 1)
+                        val endOfMonth = calendar.timeInMillis
+                        dueDate in startOfMonth until endOfMonth
+                    }
+
+                    else -> true // Should not happen if filter is not "All"
+                }
+            }
+        }
+
         _filteredTasks.value = filtered
     }
 }
-
 // Data Classes
 data class InspectorTaskUiState(
     val isLoading: Boolean = false,
