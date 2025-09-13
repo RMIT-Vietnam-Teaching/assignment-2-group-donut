@@ -13,8 +13,6 @@ Account:
 - Supervisor Account: Phone: 123456789, OTP: 123456
 - Inspector Account: Phone: 223456789, OTP: 123456
 ---
-link video demo:
-https://youtu.be/N1hbhho7Pu8
 
 ## 💡 Why I Made This App
 Traditional inspection workflows at Phuong Hai company involved **manual note-taking, delayed reporting, and scattered communication**.  
@@ -30,7 +28,7 @@ This app solves these issues by:
 | Name                  | Student ID | Contribution |
 |-----------------------|------------|--------------|
 | Tran Thanh Lam        | s4038329   | Planned overall app architecture, designed workflows, implemented all Supervisor-related interfaces (task assignment, dashboard, report review), planned Firebase structure, and developed real-time messaging feature |
-| Nguyen Dinh Lam       | s3990403   | Designed workflows, implemented all Inspector-related interfaces (inspection forms, task updates, photo uploads), handled work management module, and integrated machine learning feature |
+| Nguyen Dinh Lam       | s3990403   | Planned overall app architecture,Designed workflows, implemented all Inspector-related interfaces (inspection forms, task updates, photo uploads), handled work management module,sync worker and integrated machine learning feature |
 | Truong Bien Hai Trong | s3872952   | Tested user interface flows, identified UI/UX issues, and clarified requirements during development |
 | Cao Ngoc Son          | s3916151   | Conducted QA testing, reported bugs, and supported requirement clarification for Supervisor and Inspector features |
 ---
@@ -73,4 +71,4 @@ This app solves these issues by:
    ```bash
    git clone https://github.com/RMIT-Vietnam-Teaching/assignment-2-group-donut
 
-## My demo video link: [Demo Video]()
+## My demo video link: [[Demo Video]()](https://youtu.be/N1hbhho7Pu8)
