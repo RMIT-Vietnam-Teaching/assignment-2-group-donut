@@ -94,7 +94,7 @@ fun InspectorDashboardScreen(
                 }
                 uiState.showError -> {
                     DashboardErrorContent(
-                        message = uiState.errorMessage ?: "Đã có lỗi xảy ra",
+                        message = uiState.errorMessage ?: "An error occurred",
                         onRetry = { viewModel.refreshDashboard() }
                     )
                 }
@@ -102,9 +102,9 @@ fun InspectorDashboardScreen(
                     LazyColumn(
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(horizontal = 16.dp), // Chỉ padding ngang
+                            .padding(horizontal = 16.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp),
-                        contentPadding = PaddingValues(top = 16.dp) // Padding top cho toàn bộ list
+                        contentPadding = PaddingValues(top = 16.dp)
                     ) {
                         item { WelcomeHeader(user = uiState.currentUser) }
                         item {
@@ -117,7 +117,7 @@ fun InspectorDashboardScreen(
                         }
                         item {
                             SectionHeader(
-                                title = "Báo cáo chờ duyệt",
+                                title = "Pending Reports",
                                 count = uiState.pendingReports.size,
                                 icon = Icons.Default.PendingActions,
                                 color = StatusOrange
@@ -126,7 +126,7 @@ fun InspectorDashboardScreen(
                         if (uiState.pendingReports.isEmpty()) {
                             item {
                                 EmptyStateCard(
-                                    message = "Không có báo cáo nào đang chờ duyệt",
+                                    message = "No reports are pending review",
                                     icon = Icons.Default.CheckCircle
                                 )
                             }
@@ -142,7 +142,7 @@ fun InspectorDashboardScreen(
                         }
                         item {
                             SectionHeader(
-                                title = "Nhiệm vụ hôm nay",
+                                title = "Today's Tasks",
                                 count = uiState.todayTasks.size,
                                 icon = Icons.Default.Today,
                                 color = StatusBlue
@@ -151,7 +151,7 @@ fun InspectorDashboardScreen(
                         if (uiState.todayTasks.isEmpty()) {
                             item {
                                 EmptyStateCard(
-                                    message = "Không có nhiệm vụ nào cho hôm nay",
+                                    message = "No tasks scheduled for today",
                                     icon = Icons.Default.EventAvailable
                                 )
                             }
@@ -163,7 +163,19 @@ fun InspectorDashboardScreen(
                                 )
                             }
                         }
-                        // 2. Thêm một khoảng trống ở cuối
+                        item {
+                            QuickActions(
+                                onCreateReport = {
+                                    navController.navigate(Screen.InspectorNewReportScreen.route)
+                                },
+                                onViewAllTasks = {
+                                    navController.navigate(Screen.InspectorTaskScreen.route)
+                                },
+                                onViewHistory = {
+                                    navController.navigate(Screen.InspectorHistoryScreen.route)
+                                }
+                            )
+                        }
                         item {
                             Spacer(modifier = Modifier.height(80.dp))
                         }
@@ -179,14 +191,11 @@ fun InspectorDashboardScreen(
     }
 }
 
-
 @Composable
 private fun WelcomeHeader(user: User?) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
     ) {
@@ -206,7 +215,7 @@ private fun WelcomeHeader(user: User?) {
                     modifier = Modifier.size(28.dp)
                 )
                 Text(
-                    text = "Xin chào, ${user?.fullName ?: "Inspector"}",
+                    text = "Hello, ${user?.fullName ?: "Inspector"}",
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
@@ -218,7 +227,7 @@ private fun WelcomeHeader(user: User?) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Text(
-                text = "Hôm nay là ${SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date())}",
+                text = "Today is ${SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date())}",
                 fontSize = 14.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -235,17 +244,13 @@ private fun StatisticsOverview(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
+        Column(modifier = Modifier.padding(16.dp)) {
             Text(
-                text = "Tổng quan",
+                text = "Overview",
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface,
@@ -255,10 +260,10 @@ private fun StatisticsOverview(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                StatCard(number = pendingReports, label = "Chờ duyệt", color = StatusOrange, icon = Icons.Default.PendingActions)
-                StatCard(number = todayTasks, label = "Task hôm nay", color = StatusBlue, icon = Icons.Default.Today)
-                StatCard(number = totalReports, label = "Tổng báo cáo", color = MaterialTheme.colorScheme.primary, icon = Icons.Default.Assignment)
-                StatCard(number = completedTasks, label = "Đã hoàn thành", color = StatusGreen, icon = Icons.Default.CheckCircle)
+                StatCard(number = pendingReports, label = "Pending", color = StatusOrange, icon = Icons.Default.PendingActions)
+                StatCard(number = todayTasks, label = "Today's Tasks", color = StatusBlue, icon = Icons.Default.Today)
+                StatCard(number = totalReports, label = "Total Reports", color = MaterialTheme.colorScheme.primary, icon = Icons.Default.Assignment)
+                StatCard(number = completedTasks, label = "Completed", color = StatusGreen, icon = Icons.Default.CheckCircle)
             }
         }
     }
@@ -331,7 +336,7 @@ private fun PendingReportCard(report: ReportItem, onClick: () -> Unit) {
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    text = "Gửi lúc: ${report.createdAt}",
+                    text = "Submitted: ${report.createdAt}",
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -343,7 +348,7 @@ private fun PendingReportCard(report: ReportItem, onClick: () -> Unit) {
                     tonalElevation = 2.dp
                 ) {
                     Text(
-                        text = "⏳ Chờ duyệt",
+                        text = "⏳ Pending",
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Medium,
                         color = StatusOrange,
@@ -391,7 +396,7 @@ private fun TaskCard(task: TaskItem, onClick: () -> Unit) {
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    text = "Hạn: ${task.dueTime}",
+                    text = "Due: ${task.dueTime}",
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -408,9 +413,9 @@ private fun TaskCard(task: TaskItem, onClick: () -> Unit) {
                 ) {
                     Text(
                         text = when (task.priority) {
-                            "HIGH" -> "🔴 Cao"
-                            "NORMAL" -> "🔵 Bình thường"
-                            else -> "⚪ Thấp"
+                            "HIGH" -> "🔴 High"
+                            "NORMAL" -> "🔵 Normal"
+                            else -> "⚪ Low"
                         },
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Medium,
@@ -452,6 +457,61 @@ private fun EmptyStateCard(message: String, icon: ImageVector) {
 }
 
 @Composable
+private fun QuickActions(
+    onCreateReport: () -> Unit,
+    onViewAllTasks: () -> Unit,
+    onViewHistory: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(
+                text = "Quick Actions",
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                QuickActionButton(icon = Icons.Default.Add, label = "New Report", onClick = onCreateReport)
+                QuickActionButton(icon = Icons.Default.Assignment, label = "All Tasks", onClick = onViewAllTasks)
+                QuickActionButton(icon = Icons.Default.History, label = "History", onClick = onViewHistory)
+            }
+        }
+    }
+}
+
+@Composable
+private fun QuickActionButton(icon: ImageVector, label: String, onClick: () -> Unit) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.clickable { onClick() }
+    ) {
+        Surface(
+            color = MaterialTheme.colorScheme.primary,
+            shape = RoundedCornerShape(12.dp),
+            tonalElevation = 4.dp,
+            modifier = Modifier.size(48.dp)
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(imageVector = icon, contentDescription = label, tint = Color.White, modifier = Modifier.size(24.dp))
+            }
+        }
+        Text(text = label, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center, maxLines = 2)
+    }
+}
+
+@Composable
 private fun DashboardErrorContent(message: String, onRetry: () -> Unit) {
     Column(
         modifier = Modifier.fillMaxSize().padding(32.dp),
@@ -462,7 +522,7 @@ private fun DashboardErrorContent(message: String, onRetry: () -> Unit) {
         Spacer(modifier = Modifier.height(16.dp))
         Text(text = message, fontSize = 16.sp, color = MaterialTheme.colorScheme.onSurface, textAlign = TextAlign.Center)
         Spacer(modifier = Modifier.height(16.dp))
-        ButtonUI(text = "Thử lại", onClick = onRetry)
+        ButtonUI(text = "Retry", onClick = onRetry)
     }
 }
 
