@@ -214,10 +214,10 @@ class InspectorDashboardViewModel @Inject constructor(
         val diffInMillis = now - reportTime
 
         return when {
-            diffInMillis < 60 * 1000 -> "Vừa xong"
-            diffInMillis < 60 * 60 * 1000 -> "${diffInMillis / (60 * 1000)} phút trước"
-            diffInMillis < 24 * 60 * 60 * 1000 -> "${diffInMillis / (60 * 60 * 1000)} giờ trước"
-            diffInMillis < 7 * 24 * 60 * 60 * 1000 -> "${diffInMillis / (24 * 60 * 60 * 1000)} ngày trước"
+            diffInMillis < 60 * 1000 -> "just finished"
+            diffInMillis < 60 * 60 * 1000 -> "${diffInMillis / (60 * 1000)} minutes ago"
+            diffInMillis < 24 * 60 * 60 * 1000 -> "${diffInMillis / (60 * 60 * 1000)} hours ago"
+            diffInMillis < 7 * 24 * 60 * 60 * 1000 -> "${diffInMillis / (24 * 60 * 60 * 1000)} days ago"
             else -> SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(timestamp.toDate())
         }
     }

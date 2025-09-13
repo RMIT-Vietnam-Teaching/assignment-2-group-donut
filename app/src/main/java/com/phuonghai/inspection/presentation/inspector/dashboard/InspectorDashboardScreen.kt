@@ -164,19 +164,6 @@ fun InspectorDashboardScreen(
                             }
                         }
                         item {
-                            QuickActions(
-                                onCreateReport = {
-                                    navController.navigate(Screen.InspectorNewReportScreen.route)
-                                },
-                                onViewAllTasks = {
-                                    navController.navigate(Screen.InspectorTaskScreen.route)
-                                },
-                                onViewHistory = {
-                                    navController.navigate(Screen.InspectorHistoryScreen.route)
-                                }
-                            )
-                        }
-                        item {
                             Spacer(modifier = Modifier.height(80.dp))
                         }
                     }
