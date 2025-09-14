@@ -1,61 +1,33 @@
-
-
-## 💡 Why I Made This App
-Traditional inspection workflows at Phuong Hai company involved **manual note-taking, delayed reporting, and scattered communication**.  
-This app solves these issues by:
-- Centralizing all inspection data in one place.
-- Reducing paperwork and manual errors.
-- Enabling supervisors to **monitor tasks, assign jobs, and review reports instantly**.
-
-
-
-## 🎯 What I Learned
-- Applying **Android Jetpack components** (ViewModel, LiveData, WorkManager).
-- Handling **offline-first architecture** with background sync.
-- Managing **team collaboration** with version control (Git & GitHub).
-- Writing **clean, maintainable code** with dependency injection (Hilt).
-- Understanding the challenges of building **real-world mobile apps** for businesses.
-
----
-
-## 🚀 Features
-- User authentication with role-based access (Supervisor / Inspector)
-- Real-time messaging between Supervisor and Inspector
-- Offline mode with background data synchronization
-- Machine learning to auto-generate inspection descriptions from uploaded images
-- Push notifications for new tasks and status updates 
-- Inspection form with photo upload & notes
-- Create inspection reports based on assigned tasks 
-- Task assignment and management
-- Review reports with option to accept or reject submissions
-- Dashboard to monitor progress across branches
-- Manage report history and export approved reports as PDF
-- Compose UI and unit testing 
----
-
-## 🛠 Tech Stack
-- **Language**: Kotlin
-- **Frameworks & Libraries**: Android Jetpack (ViewModel, LiveData, WorkManager, Room), Hilt, Coroutine
-- **Backend / Database**: Firebase Realtime Database & Firebase Storage & Firebase Authentication && Firebase Storage
-- **UI**: Jetpack Compose + Material Design
-- **Tools**: GitHub, Android Studio
-
----
-
-## 📂 How to Run
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/RMIT-Vietnam-Teaching/assignment-2-group-donut
-
-## My demo video link: https://youtu.be/N1hbhho7Pu8
-
-
-
 # FieldInspectionApp (Android • Jetpack Compose)
 
 > An on-site inspection management app with **two roles** (Inspector & Supervisor). Supports **offline work**, **automatic sync**, **phone OTP login (Firebase Auth)**, **Google Maps integration**, **reports with photos/ML Kit auto-labeling**, **chat**, **notifications**, and **PDF export**.
 
 🎥 **Demo video:** https://youtu.be/N1hbhho7Pu8
+
+---
+
+## 💡 Why Our Team Made This App
+At Phuong Hai company, traditional inspection workflows often relied on manual note-taking, delayed reporting, and fragmented communication, which slowed down operations and created unnecessary risks.
+We wanted to change that by building an app that:
+
+- Centralizes all inspection data into a single, reliable platform.
+
+- Reduces paperwork, improves accuracy, and minimizes human errors.
+
+- Enables supervisors to monitor tasks, assign jobs, and review reports instantly.
+
+- Strengthens collaboration between inspectors and supervisors through real-time messaging and notifications.
+
+- Ultimately, our goal was to streamline the inspection process, save time for employees, and help the company make faster, better-informed decisions.
+
+
+
+## 🎯 What We Learned Along The Way
+- Applying Android Jetpack components such as ViewModel, LiveData, and WorkManager.
+- Designing an offline-first architecture with background synchronization.
+- Collaborating effectively using version control tools (Git & GitHub).
+- Writing clean, scalable, and maintainable code with dependency injection (Hilt).
+- Gaining insights into the challenges of building business-oriented mobile applications.
 
 ---
 
@@ -79,16 +51,6 @@ This app solves these issues by:
 
 > 🔐 Security note: the repo includes `google-services.json` and a **hard-coded Google Maps API key** inside `AndroidManifest.xml`. For public repos, remove these and load them from `local.properties` + `manifestPlaceholders`.
 
-
-## 👥 Contributors
-
-| Name                  | Student ID | Contribution |
-|-----------------------|------------|--------------|
-| Tran Thanh Lam        | s4038329   | Planned overall app architecture, designed workflows, implemented all Supervisor-related interfaces (task assignment, dashboard, report review), planned Firebase structure, and developed real-time messaging feature |
-| Nguyen Dinh Lam       | s3990403   | Planned overall app architecture,Designed workflows, implemented all Inspector-related interfaces (inspection forms, task updates, photo uploads), handled work management module,sync worker and integrated machine learning feature |
-| Truong Bien Hai Trong | s3872952   | Conducted end-to-end testing across user flows, identified and documented UI/UX issues, supported integration testing between Inspector and Supervisor modules, and collaborated with the team to refine requirements and improve usability |
-| Cao Ngoc Son          | s3916151   | Executed QA testing, reported functional bugs, validated Supervisor/Inspector features, and assisted in requirement clarification and final verification |
----
 
 ---
 
@@ -144,34 +106,21 @@ app/src/main/java/com/phuonghai/inspection/
 
 ---
 
-## 4) Environment Setup
-Since only `app/` is provided, two options:
-
-### Option A – Use Android Studio (recommended)
-1. Install Android Studio **Ladybug 2024.2.1+**.
-2. Create a new project → remove its `app/` → replace with this `app/` folder.
-3. Add to `settings.gradle.kts`:
-   ```kotlin
-   include(":app")
-   ```
-4. Ensure root `build.gradle.kts` has correct plugin/versions (AGP, Kotlin, Hilt).
-5. Sync Gradle → build.
-
-### Option B – Minimal Gradle setup
-Add root `settings.gradle.kts` and `build.gradle.kts` with proper plugin versions.
-
----
-
-## 5) Secrets & Config
+## 4) Secrets & Config
 - **Firebase**: requires `google-services.json` in `app/`. Don’t commit this file.
 - **Google Maps API key**: move from `AndroidManifest.xml` → `local.properties` + `manifestPlaceholders`.
 - **Permissions**: INTERNET, NETWORK_STATE, FINE_LOCATION, CAMERA, STORAGE.
 
 ---
 
-## 6) How to Run
+## 5) How to Run
 - Run on device/emulator with **Google Play services**.
 - Login flow: enter phone → receive OTP → verify → redirect to Inspector/Supervisor dashboard based on Firestore role.
+
+Clone the repository:
+   ```bash
+   git clone https://github.com/RMIT-Vietnam-Teaching/assignment-2-group-donut
+   ```
 
   Account:
 - Supervisor Account: Phone: 123456789, OTP: 123456
@@ -179,7 +128,7 @@ Add root `settings.gradle.kts` and `build.gradle.kts` with proper plugin version
 
 ---
 
-## 7) Tech Stack
+## 6) Tech Stack
 - **Compose**: Material3, icons, window-size-class.
 - **DI**: Hilt.
 - **Coroutines**.
@@ -194,7 +143,7 @@ Add root `settings.gradle.kts` and `build.gradle.kts` with proper plugin version
 
 ---
 
-## 8) Data Models (simplified)
+## 7) Data Models (simplified)
 ```kotlin
 data class User(uId: String, fullName: String, phoneNumber: String, role: UserRole)
 
@@ -208,28 +157,7 @@ data class Report(reportId: String, inspectorId: String, taskId: String,
 
 ---
 
-## 9) Navigation
-- NavHost in `presentation/navigation/Navigation.kt`.
-- After login → redirects to:
-  - **InspectorNavigationBar**
-  - **SupervisorNavigationBar**
-
----
-
-## 10) Testing
-- Run `./gradlew test` or via Android Studio.
-- Example tests: `LocalReportDaoTest.kt`, `ReportMergeTest.kt`.
-
----
-
-## 11) Build & Release
-- Debug/release variants.
-- Add ProGuard rules for Hilt/Room/Firebase.
-- FileProvider config for external file sharing.
-
----
-
-## 12) Common Issues
+## 8) Common Issues
 - Wrong package → fix `SupervisorMapScreen.kt`.
 - AGP/Kotlin mismatch → adjust root `build.gradle.kts` or update Studio.
 - Missing Compose BOM/`libs.versions.toml` → add or replace aliases with direct versions.
@@ -238,30 +166,16 @@ data class Report(reportId: String, inspectorId: String, taskId: String,
 
 ---
 
-## 13) Roadmap (suggested)
-- Push Notifications (FCM).
-- Better role-based navigation (deeplink).
-- Local DB/file encryption.
-- Map clustering for reports.
-- Crashlytics/Analytics.
-- Accessibility & UI polish.
+## 9) Authors
 
+| Name                  | Student ID | Contribution |
+|-----------------------|------------|--------------|
+| Tran Thanh Lam        | s4038329   | Planned overall app architecture, designed workflows, implemented all Supervisor-related interfaces (task assignment, dashboard, report review), planned Firebase structure, and developed real-time messaging feature |
+| Nguyen Dinh Lam       | s3990403   | Planned overall app architecture,Designed workflows, implemented all Inspector-related interfaces (inspection forms, task updates, photo uploads), handled work management module,sync worker and integrated machine learning feature |
+| Truong Bien Hai Trong | s3872952   | Conducted end-to-end testing across user flows, identified and documented UI/UX issues, supported integration testing between Inspector and Supervisor modules, and collaborated with the team to refine requirements and improve usability |
+| Cao Ngoc Son          | s3916151   | Executed QA testing, reported functional bugs, validated Supervisor/Inspector features, and assisted in requirement clarification and final verification |
 ---
 
-## 14) Authors & Contact
-- **Team/Owner**: (fill names/roles)
-- **Email**: (add contact email)
-- **Links**: GitHub/LinkedIn
-
----
-
-## 15) License
-- **Default**: course project/private.
-- **Third-party**:
-  - iText7: **AGPL/commercial license**. Consider alternatives if commercial use.
-  - Google Maps/ML Kit/Firebase: per Google terms.
-
----
 
 ### Notes
 - Code is already structured with **Clean Architecture + MVVM**, ready to extend.
